@@ -56,10 +56,15 @@ jobs:
         env:
           LD_LIBRARY_PATH: ${{ runner.temp }}/qt/${{ env.QT_VERSION }}/gcc_64/lib
         run: |
-          build/bin/pokerth_dedicated_server --version
           python3 - <<'PY'
           import os, pathlib, signal, socket, subprocess, time
           binary = pathlib.Path('build/bin/pokerth_dedicated_server').resolve()
+          # PokerTH intentionally returns 1 for informational --version output.
+          version = subprocess.run([str(binary), '--version'], capture_output=True, text=True, timeout=10)
+          print(version.stdout)
+          assert version.returncode in (0, 1), version.stderr
+          assert 'PokerTH server version' in version.stdout, version.stderr
+          assert 'Network protocol version' in version.stdout, version.stderr
           pid_file = pathlib.Path(os.environ['RUNNER_TEMP']) / 'pokerth-check.pid'
           try:
               subprocess.run([str(binary), '--pid-file', str(pid_file)], check=True, timeout=15)
