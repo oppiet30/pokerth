@@ -1,0 +1,98 @@
+name: Dedicated server build check
+
+on:
+  push:
+    branches: [stable, 'ci/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dedicated-server-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      QT_VERSION: '6.9.3'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ libboost-all-dev \
+            protobuf-compiler libprotobuf-dev libssl-dev libgl-dev \
+            libxkbcommon-dev libegl-dev libfontconfig1 libglib2.0-0 \
+            libpulse0 libx11-xcb1 libxcb-cursor0
+
+      - name: Cache Qt
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/qt
+          key: dedicated-server-qt-${{ runner.os }}-${{ runner.arch }}-${{ env.QT_VERSION }}-1
+
+      - name: Install Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 -m venv "$RUNNER_TEMP/aqt"
+          "$RUNNER_TEMP/aqt/bin/pip" install aqtinstall
+          "$RUNNER_TEMP/aqt/bin/aqt" install-qt linux desktop "$QT_VERSION" linux_gcc_64 \
+            --outputdir "$RUNNER_TEMP/qt" -m qtmultimedia qtwebsockets qtshadertools qt5compat qtimageformats
+
+      - name: Configure and build dedicated server
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/qt/$QT_VERSION/gcc_64"
+          cmake --build build --target pokerth_dedicated_server --parallel 2
+          ln -s "$GITHUB_WORKSPACE/data" build/bin/data
+
+      - name: Check version and server startup
+        env:
+          LD_LIBRARY_PATH: ${{ runner.temp }}/qt/${{ env.QT_VERSION }}/gcc_64/lib
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, signal, socket, subprocess, time
+          binary = pathlib.Path('build/bin/pokerth_dedicated_server').resolve()
+          # PokerTH intentionally returns 1 for informational --version output.
+          version = subprocess.run([str(binary), '--version'], capture_output=True, text=True, timeout=10)
+          print(version.stdout)
+          assert version.returncode in (0, 1), version.stderr
+          assert 'PokerTH server version' in version.stdout, version.stderr
+          assert 'Network protocol version' in version.stdout, version.stderr
+          pid_file = pathlib.Path(os.environ['RUNNER_TEMP']) / 'pokerth-check.pid'
+          try:
+              subprocess.run([str(binary), '--pid-file', str(pid_file)], check=True, timeout=15)
+              deadline = time.monotonic() + 20
+              while True:
+                  try:
+                      with socket.create_connection(('127.0.0.1', 7234), timeout=1):
+                          assert pid_file.is_file(), 'Server did not create its PID file'
+                          os.kill(int(pid_file.read_text().strip()), 0)
+                          print('Dedicated server is running and accepts TCP connections on port 7234')
+                          break
+                  except OSError:
+                      if time.monotonic() >= deadline:
+                          raise RuntimeError('Dedicated server did not open port 7234')
+                      time.sleep(0.25)
+          finally:
+              if pid_file.is_file():
+                  try:
+                      os.kill(int(pid_file.read_text().strip()), signal.SIGTERM)
+                  except ProcessLookupError:
+                      pass
+          PY
+
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dedicated-server-logs
+          path: ~/.pokerth/log-files/
+          if-no-files-found: ignore
+          retention-days: 7
