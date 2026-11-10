@@ -257,6 +257,7 @@ void GameHandler::setGame(boost::shared_ptr<Game> game)
 
 	m_localGameExitRequested = false;
 	m_localGameOver = false;
+	setWaitingForNextHand(false);
 	m_game = game;
 	// Adopt the spectator mode of the network client (always false in a local
 	// game). It is already settled when the engine reports the game: the
@@ -351,11 +352,11 @@ QStringList GameHandler::tableStatsNicks() const
 
 	// The nick list 1:1 like the Qt widgets client (MyNameLabel): active players only.
 	// In addition – as when building m_players – skip players who have already dropped
-	// out (m_leftPlayers), so that the list corresponds exactly to the visible
+	// out (isPlayerGone()), so that the list corresponds exactly to the visible
 	// player boxes and follows along when somebody leaves.
 	PlayerList seats = m_game->getSeatsList();
 	for (auto it = seats->begin(); it != seats->end(); ++it) {
-		if (m_leftPlayers.contains((*it)->getMyUniqueID()))
+		if (isPlayerGone(*it))
 			continue;
 		if (!(*it)->getMyActiveStatus())
 			continue;
@@ -365,6 +366,16 @@ QStringList GameHandler::tableStatsNicks() const
 }
 
 // ─── private helpers ────────────────────────────────────────────────────────
+
+bool GameHandler::isPlayerGone(const boost::shared_ptr<PlayerInterface> &player) const
+{
+	// A player who left is only gone once they are out of the game: the
+	// server keeps a disconnected player (and one who left mid-hand) seated
+	// until it deactivates them between hands; the next HandStart then marks
+	// them NoMoney → inactive. Until then they still post blinds and fold.
+	return m_leftPlayers.contains(player->getMyUniqueID())
+		   && !player->getMyActiveStatus();
+}
 
 void GameHandler::playYourTurnTimeoutSound()
 {
@@ -600,11 +611,11 @@ void GameHandler::refreshPlayerData()
 
 		for (auto it = seats->begin(); it != seats->end(); ++it) {
 			int id = (*it)->getMyID();
-			// A player who has left the game: treat the seat as empty, but
-			// mark it as "reserved". The table view can thereby keep the seat
+			// A player who has left the game (and is out of it): treat the seat as
+			// empty, but mark it as "reserved". The table view can thereby keep the seat
 			// – depending on the setting – as an invisible placeholder in the ring,
 			// so that the remaining boxes do not move up.
-			if (m_leftPlayers.contains((*it)->getMyUniqueID())) {
+			if (isPlayerGone(*it)) {
 				if (id >= 0 && id < 10) {
 					QVariantMap gone = newPlayers[id].toMap();
 					gone["reserved"] = true;
@@ -683,6 +694,12 @@ void GameHandler::refreshPlayerData()
 				p["stack"]  = (*it)->getMyCash();
 				p["bet"]    = (*it)->getMySet();
 				p["active"] = (*it)->getMyActiveStatus();
+				// Left/disconnected, but still seated by the server (blinds + auto-fold
+				// until it deactivates them) → shown dimmed like in the widgets client
+				// (SEAT_AUTOFOLD). Not for your own seat.
+				p["offline"] = id != 0
+							   && (m_leftPlayers.contains((*it)->getMyUniqueID())
+								   || (networkGame && !(*it)->isSessionActive()));
 				p["myTurn"] = (*it)->getMyTurn();
 				p["seatId"] = id;
 				// The dealer/small/big blind only for active players: otherwise those who dropped out
@@ -1159,6 +1176,14 @@ void GameHandler::setShowdownActive(bool active)
 		return;
 	m_showdownActive = active;
 	emit showdownActiveChanged();
+}
+
+void GameHandler::setWaitingForNextHand(bool waiting)
+{
+	if (m_waitingForNextHand == waiting)
+		return;
+	m_waitingForNextHand = waiting;
+	emit waitingForNextHandChanged();
 }
 
 // ─── slots called from QmlGuiInterface ──────────────────────────────────────
@@ -1655,6 +1680,45 @@ bool GameHandler::checkLocalGameOver()
 	return true;
 }
 
+void GameHandler::onLocalHandFinished()
+{
+	// The end of the tournament? As in the widgets client (gameTableImpl::postRiverRun-
+	// Animation6) NO further hand may follow the last one if only
+	// one player has chips left – otherwise the winner plays on alone endlessly
+	// and pays blinds in the process. checkLocalGameOver() reports the end of the
+	// game to the QML side (the winner popup).
+	if (checkLocalGameOver())
+		return;
+	// Pause between hands: the result (winner, revealed cards, winning hand) stays
+	// on the table until the player starts the next hand – like the start button of
+	// the widgets client (gameTableImpl::startNewHand with breakAfterCurrentHand).
+	if (m_config && m_config->readConfigInt("PauseBetweenHands")) {
+		setWaitingForNextHand(true);
+		return;
+	}
+	startNextLocalHand();
+}
+
+void GameHandler::continueToNextHand()
+{
+	if (!m_waitingForNextHand)
+		return;
+	// Leaving the game during the pause clears the flag (endLocalGame/setGame).
+	setWaitingForNextHand(false);
+	startNextLocalHand();
+}
+
+void GameHandler::startNextLocalHand()
+{
+	onNextRoundCleanGui();
+	if (!m_session) return;
+	auto game = m_session->getCurrentGame();
+	if (game) {
+		game->initHand();
+		game->startHand();
+	}
+}
+
 void GameHandler::onBlindsSet(int smallBlind)
 {
 	if (localGameCallbacksBlocked()) return;
@@ -1791,6 +1855,7 @@ void GameHandler::onNextRoundCleanGui()
 	}
 	// End the showdown before the player data is rebuilt → the cards close.
 	setShowdownActive(false);
+	setWaitingForNextHand(false);
 	m_allInRevealed = false;
 	m_postRiverShownPlayers.clear();
 	// Discard the showdown snapshot of the previous hand → the live state applies again from now on.
@@ -2124,6 +2189,7 @@ void GameHandler::endLocalGame()
 	if (m_session->isNetworkClientRunning()) return;
 
 	m_localGameExitRequested = true;
+	setWaitingForNextHand(false);
 	m_game.reset();
 
 	// Ausstehende Busted-Player-Timer abbrechen.

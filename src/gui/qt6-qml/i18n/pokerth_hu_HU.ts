@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>Mutat</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>Automatikus passz/dobás</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>Következő leosztás</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Kérlek írd be a jelszót még egyszer és próbáld újra.</translation>
         <translation>Tétlenség miatt eltávolítottak.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>Elérhető a PokerTH új verziója.&lt;br&gt;&lt;br&gt;A(z) %1 verzió egyelőre még használható, de a szerver csak a jelenlegi és az előző verziót támogatja. A következő kiadás után ez a verzió már nem tud csatlakozni.&lt;br&gt;&lt;br&gt;Kérjük, frissítse a PokerTH-t ott, ahonnan telepítette, vagy töltse le a(z) &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt; oldalról.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>%1 jelenleg nincs a lobbiban.</translation>
@@ -2386,6 +2396,26 @@ Kérlek írd be a jelszót még egyszer és próbáld újra.</translation>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>%1 nem tud csatlakozni ide: %2, mert elfoglalt.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>Nem kézbesítve: %1 még játszik, és már várakoznak nála tőled üzenetek. Újra írhatsz, amint %1 visszatér a lobbiba.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>%1 éppen játszik. Az üzeneteidet kézbesítjük, amint %1 visszatér a lobbiba.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>Nem kézbesítve: %1 nincs bejelentkezve, és már várakoznak nála tőled üzenetek. Újra írhatsz, amint %1 bejelentkezik.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>%1 nincs bejelentkezve. Az üzeneteidet a következő bejelentkezéskor kézbesítjük.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Kérlek indítsd újra a PokerTH-t, hogy a naplófájlok oda kerüljenek.</trans
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Ellenőrizd a felhasználónevet és a jelszót.</translation>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ előnézet</translation>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ előnézet</translation>
         <translation>A helyed az asztalnál még néhány percig fenn marad.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>Kapcsolódási problémák</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>A szerver nem válaszol. Várakozás válaszra…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>A kapcsolat megszakadt</translation>
     </message>

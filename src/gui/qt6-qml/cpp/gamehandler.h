@@ -21,6 +21,7 @@
 class ConfigFile;
 class Session;
 class Game;
+class PlayerInterface;
 class SoundEvents;
 class QTimer;
 class ChatTranslator;
@@ -176,6 +177,10 @@ class GameHandler : public QObject
 	// In this phase QML disables the action buttons (fold/call/raise), so that
 	// no premature click for the next round goes nowhere.
 	Q_PROPERTY(bool showdownActive READ showdownActive NOTIFY showdownActiveChanged)
+	// Local game with "pause between hands" (PauseBetweenHands): the result of the
+	// finished hand stays on the table until the player starts the next hand
+	// (continueToNextHand) – like the start button of the Qt widgets client.
+	Q_PROPERTY(bool waitingForNextHand READ waitingForNextHand NOTIFY waitingForNextHandChanged)
 	// The card odds of your own hand (seat 0) – analogous to the CardsChanceMonitor
 	// of the widgets client. A list with 10 entries, index 0 = high card …
 	// 9 = royal flush; every entry is a map {"prob": int %, "possible": bool}.
@@ -342,6 +347,10 @@ public:
 	{
 		return m_showdownActive;
 	}
+	bool waitingForNextHand() const
+	{
+		return m_waitingForNextHand;
+	}
 	QVariantList cardsChance() const
 	{
 		return m_cardsChance;
@@ -428,6 +437,9 @@ public:
 	// called at the end of a hand, BEFORE the next hand is started. It returns
 	// true if the game is over – then no further hand may follow.
 	Q_INVOKABLE bool checkLocalGameOver();
+	// Local game: the result display of the finished hand has run its time. It starts
+	// the next hand – or, with PauseBetweenHands, waits for continueToNextHand().
+	Q_INVOKABLE void onLocalHandFinished();
 	Q_INVOKABLE void onNextRoundCleanGui();
 	Q_INVOKABLE void onDealFlopCards();
 	Q_INVOKABLE void onDealTurnCard();
@@ -467,6 +479,8 @@ public:
 	Q_INVOKABLE void raise(int amount = 0);
 	Q_INVOKABLE void allIn();
 	Q_INVOKABLE void showMyCards();
+	// Local game: start the next hand after a pause between hands.
+	Q_INVOKABLE void continueToNextHand();
 
 signals:
 	void playersChanged();
@@ -512,6 +526,7 @@ signals:
 	void hasHumanOpponentsChanged();
 	void canShowCardsChanged();
 	void showdownActiveChanged();
+	void waitingForNextHandChanged();
 	void cardsChanceChanged();
 	void pingStateChanged();
 	void spectatorsChanged();
@@ -556,6 +571,12 @@ private:
 	// Local game: remove players with 0 coins from the display after 10 seconds
 	// (analogous to onNetClientPlayerLeft in online games).
 	void checkBustedLocalPlayers();
+	// True if the player has left the game AND no longer takes part in it.
+	// The server keeps a player who lost the connection (or left mid-hand)
+	// seated with their chips – posting blinds and auto-folding – until it
+	// deactivates them between hands (reconnect window). Until then the seat
+	// stays visible (dimmed as offline) instead of looking empty.
+	bool isPlayerGone(const boost::shared_ptr<PlayerInterface> &player) const;
 	// True if the human player (seat 0) can currently act (in the
 	// hand, not all-in/folded, cash > 0, active). Engine based.
 	bool humanCanAct() const;
@@ -595,6 +616,9 @@ private:
 	// Set the showdown flag and – only on a real change – notify the QML
 	// side (showdownActive gates the action buttons among other things).
 	void setShowdownActive(bool active);
+	void setWaitingForNextHand(bool waiting);
+	// Local game: clear the table and deal the next hand.
+	void startNextLocalHand();
 
 	boost::shared_ptr<Session> m_session;
 	boost::shared_ptr<Game> m_game;
@@ -658,6 +682,7 @@ private:
 	// (still stale) playerNeedToShowCards list from wrongly revealing cards during the river
 	// betting round of the next hand.
 	bool m_showdownActive = false;
+	bool m_waitingForNextHand = false;
 	// The card odds (10 maps {prob, possible}) + the fold state + the current hand
 	// of your own player. They are updated in refreshChanceAndHand().
 	QVariantList m_cardsChance;
@@ -712,7 +737,8 @@ private:
 	int m_aggressorToken = -1;
 	bool m_localGameExitRequested = false;
 	// The unique IDs of players who have left the network game.
-	// Their seat is displayed as empty in refreshPlayerData().
+	// Their seat is displayed as empty in refreshPlayerData() as soon as
+	// they are no longer active (see isPlayerGone()).
 	QSet<unsigned> m_leftPlayers;
 	// Local game: the running 10 second timers for players with 0 coins.
 	// The key = the unique player ID; after it expires the player is treated like a

@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>Visa</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>Auto checka/lägg</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>Nästa hand</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Ange lösenordet igen och försök på nytt.</translation>
         <translation>Du togs bort på grund av inaktivitet.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>En ny version av PokerTH finns tillgänglig.&lt;br&gt;&lt;br&gt;Din version %1 kan fortfarande användas tills vidare, men servern stöder bara den aktuella och den föregående versionen. Efter nästa version kan den här versionen inte längre ansluta.&lt;br&gt;&lt;br&gt;Uppdatera PokerTH där du installerade det, eller ladda ner det från &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>%1 är inte i lobbyn för tillfället.</translation>
@@ -2386,6 +2396,26 @@ Ange lösenordet igen och försök på nytt.</translation>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>%1 kan inte gå med i %2 eftersom spelaren är upptagen.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>Inte levererat: %1 spelar fortfarande och har redan väntande meddelanden från dig. Du kan skriva igen när %1 är tillbaka i lobbyn.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>%1 spelar just nu. Dina meddelanden levereras när %1 är tillbaka i lobbyn.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>Inte levererat: %1 är offline och har redan väntande meddelanden från dig. Du kan skriva igen när %1 har loggat in.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>%1 är offline. Dina meddelanden levereras vid nästa inloggning.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Starta om PokerTH så att loggfilerna sparas där.</translation>
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Kontrollera ditt användarnamn och lösenord.</translation>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ förhandsvisning</translation>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ förhandsvisning</translation>
         <translation>Din plats vid bordet är reserverad några minuter till.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>Anslutningsproblem</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>Servern svarar inte. Väntar på svar…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>Anslutningen bröts</translation>
     </message>

@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>Tonen</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>Auto checken/passen</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>Volgende hand</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Voer het wachtwoord opnieuw in en probeer het opnieuw.</translation>
         <translation>U bent verwijderd wegens inactiviteit.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>Er is een nieuwe versie van PokerTH beschikbaar.&lt;br&gt;&lt;br&gt;Uw versie %1 kan voorlopig nog worden gebruikt, maar de server ondersteunt alleen de huidige en de vorige versie. Na de volgende versie kan deze versie geen verbinding meer maken.&lt;br&gt;&lt;br&gt;Werk PokerTH bij via de plek waar u het hebt geïnstalleerd, of download het van &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>%1 is momenteel niet in de lobby.</translation>
@@ -2386,6 +2396,26 @@ Voer het wachtwoord opnieuw in en probeer het opnieuw.</translation>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>%1 kan niet meedoen aan %2 omdat deze speler bezig is.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>Niet bezorgd: %1 speelt nog en er wachten al berichten van u. U kunt weer schrijven zodra %1 terug is in de lobby.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>%1 speelt op dit moment. Uw berichten worden bezorgd zodra %1 terug is in de lobby.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>Niet bezorgd: %1 is offline en er wachten al berichten van u. U kunt weer schrijven zodra %1 zich heeft aangemeld.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>%1 is offline. Uw berichten worden bij de volgende aanmelding bezorgd.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Start PokerTH opnieuw op zodat de logbestanden daar worden opgeslagen.</translat
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Controleer de gebruikersnaam en het wachtwoord.</translation>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ voorbeeld</translation>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ voorbeeld</translation>
         <translation>Uw plaats aan tafel blijft nog enkele minuten gereserveerd.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>Verbindingsproblemen</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>De server reageert niet. Wachten op antwoord…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>Verbinding verbroken</translation>
     </message>

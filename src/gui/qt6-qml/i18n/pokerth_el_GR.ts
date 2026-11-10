@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>Εμφάνιση</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>Αυτόματο τσεκ/πάσο</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>Επόμενο χέρι</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Please reenter the password and try again.</source>
         <translation>Αφαιρεθήκατε λόγω αδράνειας.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>Είναι διαθέσιμη μια νέα έκδοση του PokerTH.&lt;br&gt;&lt;br&gt;Η έκδοσή σας %1 μπορεί να χρησιμοποιηθεί ακόμη προς το παρόν, αλλά ο διακομιστής υποστηρίζει μόνο την τρέχουσα και την προηγούμενη έκδοση. Μετά την επόμενη έκδοση, αυτή η έκδοση δεν θα μπορεί πλέον να συνδεθεί.&lt;br&gt;&lt;br&gt;Ενημερώστε το PokerTH από εκεί που το εγκαταστήσατε ή κατεβάστε το από το &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>Ο/Η %1 δεν βρίσκεται αυτή τη στιγμή στο λόμπι.</translation>
@@ -2386,6 +2396,26 @@ Please reenter the password and try again.</source>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>Ο/Η %1 δεν μπορεί να μπει στο %2 επειδή είναι απασχολημένος.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>Δεν παραδόθηκε: ο/η %1 παίζει ακόμη και έχει ήδη μηνύματά σας σε αναμονή. Μπορείτε να γράψετε ξανά μόλις ο/η %1 επιστρέψει στο λόμπι.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>Ο/Η %1 παίζει αυτή τη στιγμή. Τα μηνύματά σας θα παραδοθούν μόλις ο/η %1 επιστρέψει στο λόμπι.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>Δεν παραδόθηκε: ο/η %1 είναι εκτός σύνδεσης και έχει ήδη μηνύματά σας σε αναμονή. Μπορείτε να γράψετε ξανά μόλις ο/η %1 συνδεθεί.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>Ο/Η %1 είναι εκτός σύνδεσης. Τα μηνύματά σας θα παραδοθούν στην επόμενη σύνδεση.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Bitte PokerTH neu starten, damit die Logdateien dort abgelegt werden.</source>
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Please check your username and password.</source>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ Vorschau</source>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ Vorschau</source>
         <translation>Η θέση σας στο τραπέζι παραμένει δεσμευμένη για μερικά λεπτά.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>Προβλήματα σύνδεσης</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>Ο διακομιστής δεν αποκρίνεται. Αναμονή για απάντηση…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>Η σύνδεση χάθηκε</translation>
     </message>

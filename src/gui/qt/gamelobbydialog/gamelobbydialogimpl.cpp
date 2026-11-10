@@ -1336,6 +1336,37 @@ void gameLobbyDialogImpl::updatePlayer(unsigned playerId, QString newPlayerName)
 	if (myChat->getMyNick() == oldNick) {
 		myChat->setMyNick(newPlayerName);
 	}
+
+	removeStaleNickListDuplicates(playerId, newPlayerName);
+}
+
+void gameLobbyDialogImpl::removeStaleNickListDuplicates(unsigned playerId, const QString &playerName)
+{
+	// The server allows every name only once: a login with a name already in
+	// use replaces the old session. If its playerListLeft got lost, the old
+	// entry stays behind with the old id - private messages to it are rejected.
+	// To be on the safe side, entries of players seated in a running game are
+	// kept; their session ends regularly when the game does.
+	if (playerName.isEmpty())
+		return;
+
+	int it1 = 0;
+	while (myNickListModel->item(it1)) {
+		const unsigned otherId = myNickListModel->item(it1, 0)->data(Qt::UserRole).toUInt();
+		if (otherId != playerId && myNickListModel->item(it1, 0)->text() == playerName) {
+			const unsigned gameIdOfOther = mySession->getGameIdOfPlayer(otherId);
+			const bool otherInRunningGame = gameIdOfOther
+											&& mySession->getClientGameInfo(gameIdOfOther).mode == GAME_MODE_STARTED;
+			if (!otherInRunningGame) {
+				myNickListModel->removeRow(it1);
+				// Don't increment – the next item shifted into this position.
+				continue;
+			}
+		}
+		++it1;
+	}
+
+	refreshPlayerStats();
 }
 
 void gameLobbyDialogImpl::removePlayer(unsigned playerId, QString)
@@ -1429,7 +1460,7 @@ void gameLobbyDialogImpl::playerJoinedLobby(unsigned playerId, QString /*playerN
 		myNickListModel->appendRow(item);
 	}
 
-	refreshPlayerStats();
+	removeStaleNickListDuplicates(playerId, QString::fromUtf8(playerInfo.playerName.c_str()));
 }
 
 void gameLobbyDialogImpl::newGameAdmin(unsigned playerId, QString)
@@ -2029,15 +2060,11 @@ void gameLobbyDialogImpl::showNickListContextMenu(QPoint p)
 
 		// Private message: not to yourself, not as a guest and not TO
 		// a guest (the server does not let guests chat at all, in neither
-		// direction) and not to players at a RUNNING table –
-		// the server does not deliver PMs there (ServerLobbyThread::
-		// HandleNetPacketChatRequest), the message would be lost without comment.
-		unsigned gameIdOfTarget = mySession->getGameIdOfPlayer(playerUid);
-		bool targetIsPlaying = gameIdOfTarget
-							   && mySession->getClientGameInfo(gameIdOfTarget).mode == GAME_MODE_STARTED;
+		// direction). Players at a RUNNING table get it once the game is over
+		// (the server holds it back, ServerLobbyThread::HandleNetPacketChatRequest).
 		bool targetIsGuest = mySession->getClientPlayerInfo(playerUid).isGuest;
 		if(playerUid != mySession->getClientUniquePlayerId() && !guestMode
-				&& !targetIsGuest && !targetIsPlaying) {
+				&& !targetIsGuest) {
 			nickListSendPrivateMessageAction->setEnabled(true);
 			nickListSendPrivateMessageAction->setText(tr("Send private message to %1").arg(QString::fromUtf8(mySession->getClientPlayerInfo(playerUid).playerName.c_str())));
 		} else {

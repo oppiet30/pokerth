@@ -53,6 +53,10 @@ public:
 	virtual void SignalNetClientNotification(int notificationId) = 0;
 	virtual void SignalNetClientStatsUpdate(const ServerStats &stats) = 0;
 	virtual void SignalNetClientPingUpdate(unsigned minPing, unsigned avgPing, unsigned maxPing) = 0;
+	// The server has not sent anything for a while (true) or is sending again
+	// (false). If the silence lasts, the client drops the connection with
+	// ERR_SOCK_CONN_RESET. Optional: a GUI without a notice for it ignores it.
+	virtual void SignalNetClientConnectionStalled(bool /*stalled*/) {}
 	virtual void SignalNetClientShowTimeoutDialog(NetTimeoutReason reason, unsigned remainingSec) = 0;
 	virtual void SignalNetClientRemovedFromGame(int notificationId) = 0;
 
@@ -77,6 +81,9 @@ public:
 	virtual void SignalNetClientGameChatMsg(const std::string &playerName, const std::string &msg) = 0;
 	virtual void SignalNetClientLobbyChatMsg(const std::string &playerName, const std::string &msg) = 0;
 	virtual void SignalNetClientPrivateChatMsg(const std::string &playerName, const std::string &msg) = 0;
+	// A private message to a player at a running table was not accepted:
+	// too many messages wait for that player already.
+	virtual void SignalNetClientPrivateChatLimitReached(const std::string &playerName, const std::string &msg) = 0;
 	virtual void SignalNetClientMsgBox(const std::string &msg) = 0;
 	virtual void SignalNetClientMsgBox(unsigned msgId) = 0;
 	virtual void SignalNetClientWaitDialog() = 0;

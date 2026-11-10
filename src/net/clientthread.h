@@ -63,6 +63,13 @@ struct Gsasl;
 
 #define SIZE_PING_BACKLOG		20
 
+// Player id of the connection probe (see ClientThread::TimerConnectionWatchdog).
+// The server assigns unique ids counting up from 1, so this one never exists
+// and the server answers with a reply without player data. It must not be 0:
+// the client rejects a PlayerInfoReply for id 0 as an invalid packet and
+// closes the session.
+#define CONNECTION_PROBE_PLAYER_ID	0xFFFFFFFFu
+
 class PingData
 {
 public:
@@ -139,6 +146,9 @@ public:
 	void SendGameChatMessage(const std::string &msg);
 	void SendLobbyChatMessage(const std::string &msg);
 	void SendPrivateChatMessage(unsigned targetPlayerId, const std::string &msg);
+	// To a player who is offline (from an existing conversation); the server
+	// holds the message back until the next login.
+	void SendPrivateChatMessageToName(const std::string &targetPlayerName, const std::string &msg);
 	void SendJoinFirstGame(const std::string &password, bool autoLeave);
 	void SendJoinGame(unsigned gameId, const std::string &password, bool autoLeave, bool spectateOnly = false);
 	void SendRejoinGame(unsigned gameId, bool autoLeave);
@@ -238,6 +248,8 @@ protected:
 	void SetUnknownAvatar(unsigned playerId);
 
 	void TimerCheckAvatarDownloads(const boost::system::error_code& ec);
+	void TimerConnectionWatchdog(const boost::system::error_code& ec);
+	void SendConnectionProbe();
 
 	void UnsubscribeLobbyMsg();
 	void ResubscribeLobbyMsg();
@@ -303,6 +315,11 @@ protected:
 	bool IsSessionEstablished() const;
 	void SetSessionEstablished(bool flag);
 
+	// Running game the server offered to rejoin in the InitAck (0 = none).
+	// Only accessed by the network thread.
+	unsigned GetRejoinOfferedGameId() const;
+	void SetRejoinOfferedGameId(unsigned gameId);
+
 	bool IsSynchronized() const;
 
 	void ReadSessionGuidFromFile();
@@ -367,6 +384,7 @@ private:
 	// Set by the network thread (JoinGameAck), read by the GUI thread.
 	std::atomic<bool> m_spectating;
 	bool m_sessionEstablished;
+	unsigned m_rejoinOfferedGameId;
 
 	mutable boost::mutex m_curStatsMutex;
 	ServerStats m_curStats;
@@ -376,6 +394,13 @@ private:
 
 	boost::asio::steady_timer m_stateTimer;
 	boost::asio::steady_timer m_avatarTimer;
+
+	// Connection watchdog. Only accessed on the io_service thread.
+	boost::asio::steady_timer m_watchdogTimer;
+	boost::asio::steady_timer::time_point m_lastReceiveTime;
+	boost::asio::steady_timer::time_point m_lastProbeTime;
+	boost::asio::steady_timer::time_point m_lastWatchdogTick;
+	bool m_connectionStalled;
 
 	friend class AbstractClientStateReceiving;
 	friend class ClientStateInit;

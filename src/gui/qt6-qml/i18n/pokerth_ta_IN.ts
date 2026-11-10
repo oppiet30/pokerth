@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>காட்டு</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>தானியங்கி செக்/ஃபோல்ட்</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>அடுத்த கை</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Please reenter the password and try again.</source>
         <translation>செயலற்ற நிலையின் காரணமாக நீங்கள் நீக்கப்பட்டீர்கள்.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>PokerTH இன் புதிய பதிப்பு கிடைக்கிறது.&lt;br&gt;&lt;br&gt;உங்கள் பதிப்பு %1 ஐ இப்போதைக்கு இன்னும் பயன்படுத்தலாம், ஆனால் சேவையகம் தற்போதைய மற்றும் முந்தைய பதிப்பை மட்டுமே ஆதரிக்கிறது. அடுத்த வெளியீட்டிற்குப் பிறகு இந்தப் பதிப்பால் இணைக்க முடியாது.&lt;br&gt;&lt;br&gt;நீங்கள் நிறுவிய இடத்திலிருந்து PokerTH ஐப் புதுப்பிக்கவும், அல்லது &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt; இலிருந்து பதிவிறக்கவும்.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>%1 தற்போது வரவேற்பறையில் இல்லை.</translation>
@@ -2386,6 +2396,26 @@ Please reenter the password and try again.</source>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>%1 பணியில் இருப்பதால் %2 இல் சேர இயலவில்லை.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>வழங்கப்படவில்லை: %1 இன்னும் விளையாடிக்கொண்டிருக்கிறார், உங்கள் செய்திகள் ஏற்கனவே காத்திருக்கின்றன. %1 வரவேற்பறைக்குத் திரும்பியதும் மீண்டும் எழுதலாம்.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>%1 தற்போது விளையாடிக்கொண்டிருக்கிறார். %1 வரவேற்பறைக்குத் திரும்பியதும் உங்கள் செய்திகள் வழங்கப்படும்.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>வழங்கப்படவில்லை: %1 இணைப்பில் இல்லை, உங்கள் செய்திகள் ஏற்கனவே காத்திருக்கின்றன. %1 உள்நுழைந்ததும் மீண்டும் எழுதலாம்.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>%1 இணைப்பில் இல்லை. அடுத்த உள்நுழைவின்போது உங்கள் செய்திகள் வழங்கப்படும்.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Bitte PokerTH neu starten, damit die Logdateien dort abgelegt werden.</source>
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Please check your username and password.</source>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ Vorschau</source>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ Vorschau</source>
         <translation>மேசையில் உங்கள் இடம் இன்னும் சில நிமிடங்களுக்கு ஒதுக்கப்பட்டிருக்கும்.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>இணைப்புச் சிக்கல்கள்</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>சேவையகம் பதிலளிக்கவில்லை. பதிலுக்காகக் காத்திருக்கிறது…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>இணைப்பு துண்டிக்கப்பட்டது</translation>
     </message>

@@ -129,6 +129,7 @@ public:
 	virtual void SignalNetClientNotification(int notificationId) override;
 	virtual void SignalNetClientStatsUpdate(const ServerStats &stats) override {}
 	virtual void SignalNetClientPingUpdate(unsigned minPing, unsigned avgPing, unsigned maxPing) override;
+	virtual void SignalNetClientConnectionStalled(bool stalled) override;
 	virtual void SignalNetClientShowTimeoutDialog(NetTimeoutReason reason, unsigned remainingSec) override;
 	virtual void SignalNetClientRemovedFromGame(int notificationId) override;
 
@@ -152,6 +153,7 @@ public:
 	virtual void SignalNetClientGameChatMsg(const std::string &playerName, const std::string &msg) override;
 	virtual void SignalNetClientLobbyChatMsg(const std::string &playerName, const std::string &msg) override;
 	virtual void SignalNetClientPrivateChatMsg(const std::string &playerName, const std::string &msg) override;
+	virtual void SignalNetClientPrivateChatLimitReached(const std::string &playerName, const std::string &msg) override;
 	virtual void SignalNetClientMsgBox(const std::string &msg) override;
 	virtual void SignalNetClientMsgBox(unsigned msgId) override;
 	virtual void SignalNetClientWaitDialog() override;

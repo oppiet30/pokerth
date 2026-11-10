@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>Rodyti</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>Auto praleisti/pasuoti</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>Kitas dalijimas</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Prašome įvesti slaptažodį iš naujo ir pamėginti dar kartą.</translation>
         <translation>Jūs buvote pašalintas dėl neveiklumo.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>Išleista nauja PokerTH versija.&lt;br&gt;&lt;br&gt;Jūsų versiją %1 kol kas dar galima naudoti, tačiau serveris palaiko tik dabartinę ir ankstesnę versiją. Išleidus kitą versiją, ši versija nebegalės prisijungti.&lt;br&gt;&lt;br&gt;Atnaujinkite PokerTH ten, iš kur jį įdiegėte, arba atsisiųskite iš &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>%1 šiuo metu nėra fojė.</translation>
@@ -2386,6 +2396,26 @@ Prašome įvesti slaptažodį iš naujo ir pamėginti dar kartą.</translation>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>%1 negali prisijungti prie %2, nes yra užsiėmęs.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>Nepristatyta: %1 dar žaidžia, o jūsų žinutės jau laukia. Vėl galėsite rašyti, kai %1 grįš į fojė.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>%1 šiuo metu žaidžia. Jūsų žinutės bus pristatytos, kai %1 grįš į fojė.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>Nepristatyta: %1 šiuo metu nėra tinkle, o jūsų žinutės jau laukia. Vėl galėsite rašyti, kai %1 prisijungs.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>%1 šiuo metu nėra tinkle. Jūsų žinutės bus pristatytos kito prisijungimo metu.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Paleiskite PokerTH iš naujo, kad žurnalo failai būtų įrašomi ten.</transla
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Prašome patikrinti vartotojo vardą ir slaptažodį.</translation>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ peržiūros</translation>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ peržiūros</translation>
         <translation>Jūsų vieta prie stalo lieka rezervuota dar kelias minutes.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>Ryšio problemos</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>Serveris neatsako. Laukiama atsakymo…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>Ryšys prarastas</translation>
     </message>

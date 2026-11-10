@@ -231,12 +231,17 @@ ServerGame::RemoveAllSessions()
 		for (auto& session : sessionsToClose) {
 			if (session) {
 				try {
-					// Set the state to Closed FIRST
-					session->SetState(SessionData::Closed);
-					// Cancel Timer
-					session->CancelTimers();
-					// Close the socket directly (not via Close(), to avoid the callback chain)
-					session->CloseSocketHandle();
+					// Close through the lobby thread's regular path: it removes the
+					// session from this game and from the lobby's game session
+					// manager, announces playerListLeft to the lobby and completes
+					// the activity row. A raw socket close marked the session Closed
+					// first, so the CloseSession() from the socket error handler
+					// returned early and the player stayed behind as a ghost in the
+					// lobby lists of all clients. The game is already in its final
+					// state, so removing the sessions triggers no game logic.
+					GetLobbyThread().CloseSession(session);
+					// CloseSession() only closes TCP/TLS sockets.
+					session->CloseWebSocketHandle();
 				} catch (const std::exception& e) {
 					LOG_ERROR("Exception closing session in RemoveAllSessions: " << e.what());
 				} catch (...) {
@@ -276,8 +281,7 @@ ServerGame::MoveAllSessionsToLobby()
 	// lobby through the regular MoveSessionToLobby path. This performs the full
 	// bookkeeping - removes the session from the lobby thread's game session
 	// manager and announces GamePlayerLeft/GameSpectatorLeft to the others -
-	// which the raw socket-close in RemoveAllSessions() would otherwise skip,
-	// leaving ghost players in the lobby that reappear doubled on reconnect.
+	// instead of disconnecting them as RemoveAllSessions() would.
 	// Copy the list first: MoveSessionToLobby mutates the session manager.
 	std::vector<boost::shared_ptr<SessionData>> sessions = GetSessionManager().GetAllSessions();
 	for (auto &session : sessions) {
@@ -343,8 +347,12 @@ ServerGame::TimerVoteKick(const boost::system::error_code &ec)
 				SendToAllPlayers(packet, SessionData::Game);
 
 				// Perform kick.
-				if (doKick)
+				if (doKick) {
+					LOG_MSG("Game " << GetId() << " - vote kick of player id " << m_voteKickData->kickPlayerId << " passed ("
+							<< m_voteKickData->numVotesInFavourOfKicking << " in favour, "
+							<< m_voteKickData->numVotesAgainstKicking << " against).");
 					KickPlayer(m_voteKickData->kickPlayerId);
+				}
 				// This petition has ended.
 				m_voteKickData.reset();
 			}
@@ -564,6 +572,8 @@ ServerGame::InternalEndGame()
 	StoreAndResetRanking();
 	m_game.reset();
 	m_numJoinsPerPlayer.clear();
+	// The game is over, private messages held back for the table may go out now.
+	GetSessionManager().ForEach(boost::bind(&ServerLobbyThread::DeliverPendingPrivateMessages, &GetLobbyThread(), boost::placeholders::_1));
 }
 
 void
@@ -985,7 +995,21 @@ ServerGame::RemoveSession(boost::shared_ptr<SessionData> session, int reason, Se
 	if (GetSessionManager().RemoveSession(session->GetId())) {
 		boost::shared_ptr<PlayerData> tmpPlayerData = session->GetPlayerData();
 		if (tmpPlayerData && !tmpPlayerData->GetName().empty()) {
-			RemovePlayerData(tmpPlayerData, reason, sessionState == SessionData::Spectating || sessionState == SessionData::SpectatorWaiting);
+			const bool spectateOnly = sessionState == SessionData::Spectating || sessionState == SessionData::SpectatorWaiting;
+			// Leaving a seat of a running game is otherwise not visible in the
+			// log - neither a kick nor a voluntary leave. The cash tells whether
+			// the player was already out of chips.
+			if (!spectateOnly && m_game
+					&& (reason == NTF_NET_REMOVED_ON_REQUEST || reason == NTF_NET_REMOVED_KICKED || reason == NTF_NET_REMOVED_TIMEOUT)) {
+				boost::shared_ptr<PlayerInterface> tmpPlayer(m_game->getPlayerByUniqueId(tmpPlayerData->GetUniqueId()));
+				if (tmpPlayer) {
+					LOG_MSG("Player \"" << tmpPlayerData->GetName() << "\" (id:" << tmpPlayerData->GetUniqueId() << ") session #" << session->GetId()
+							<< " left game " << GetId() << ": "
+							<< (reason == NTF_NET_REMOVED_ON_REQUEST ? "on request" : (reason == NTF_NET_REMOVED_KICKED ? "kicked" : "timeout"))
+							<< ", cash " << tmpPlayer->getMyCash() << ".");
+				}
+			}
+			RemovePlayerData(tmpPlayerData, reason, spectateOnly);
 		}
 	}
 }

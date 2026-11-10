@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>Seall</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>Check/Fold fèin-obrachail</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>An ath làmh</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Cuir am facal-faire a-steach turas eile is feuch ris a-rithist.</translation>
         <translation>Chaidh do thoirt air falbh air sgàth dìth gnìomhachd.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>Tha tionndadh ùr de PokerTH ri fhaighinn.&lt;br&gt;&lt;br&gt;&apos;S urrainn dhut an tionndadh %1 agad a chleachdadh fhathast an-dràsta, ach chan eil am frithealaiche a&apos; cur taic ach ris an tionndadh làithreach agus ris an fhear roimhe. Às dèidh an ath thionndaidh, cha ghabh an tionndadh seo ceangal tuilleadh.&lt;br&gt;&lt;br&gt;Ùraich PokerTH far an do stàlaich thu e no luchdaich a-nuas e o &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>Chan eil %1 san lobaidh an-dràsta.</translation>
@@ -2386,6 +2396,26 @@ Cuir am facal-faire a-steach turas eile is feuch ris a-rithist.</translation>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>Chan urrainn dha %1 gabhail ann an %2 oir tha e trang.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>Cha deach a lìbhrigeadh: Tha %1 fhathast a&apos; cluich agus tha teachdaireachdan uat a&apos; feitheamh mu thràth. &apos;S urrainn dhut sgrìobhadh a-rithist nuair a bhios %1 air ais san lobaidh.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>Tha %1 a&apos; cluich an-dràsta. Thèid na teachdaireachdan agad a lìbhrigeadh nuair a bhios %1 air ais san lobaidh.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>Cha deach a lìbhrigeadh: Chan eil %1 air loidhne agus tha teachdaireachdan uat a&apos; feitheamh mu thràth. &apos;S urrainn dhut sgrìobhadh a-rithist nuair a bhios %1 air clàradh a-steach.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>Chan eil %1 air loidhne. Thèid na teachdaireachdan agad a lìbhrigeadh aig an ath chlàradh a-steach.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Tòisich PokerTH às ùr ach an tèid na faidhlichean loga a shàbhaladh an-siud
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Feuch an dearbhaich thu an t-ainm cleachdaiche is am facal-faire agad.</translat
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ ro-shealladh</translation>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ ro-shealladh</translation>
         <translation>Cumaidh sinn an t-àite agad aig a&apos; bhòrd fad beagan mhionaidean.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>Duilgheadasan leis a’ cheangal</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>Chan eil am frithealaiche a’ freagairt. A’ feitheamh ri freagairt…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>Chaidh an ceangal air chall</translation>
     </message>

@@ -752,6 +752,8 @@ void LobbyHandler::setConfig(ConfigFile *config)
 
 void LobbyHandler::onLobbyPlayerJoined(unsigned playerId, const QString &playerName)
 {
+	// Logged in: the held back messages went out.
+	m_privateLimitOffline.remove(playerName);
 	QString countryCode;
 	bool isGuest = false;
 	if (m_session) {
@@ -761,6 +763,7 @@ void LobbyHandler::onLobbyPlayerJoined(unsigned playerId, const QString &playerN
 	}
 	const bool isAdmin = m_session ? m_session->getClientPlayerInfo(playerId).isAdmin : false;
 	m_playerListModel.addPlayer(playerId, playerName, isAdmin, countryCode, isGuest);
+	removeStalePlayerListDuplicates(playerId, playerName);
 	// The newcomer may already sit at a table (e.g. a rejoin or the
 	// player list sent again after a resubscribe).
 	syncPlayerGameMembership();
@@ -807,6 +810,7 @@ void LobbyHandler::updatePlayerName(unsigned playerId, const QString &playerName
 	}
 	// Update in player list model
 	m_playerListModel.updatePlayerInfo(playerId, playerName, serverAdmin, countryCode, isGuest);
+	removeStalePlayerListDuplicates(playerId, playerName);
 	syncPlayerGameMembership();
 	++m_playerListRevision;
 	emit playerListRevisionChanged();
@@ -839,6 +843,9 @@ void LobbyHandler::onGameListNew(unsigned gameId, const QString &gameName)
 
 void LobbyHandler::onGameListRemove(unsigned gameId)
 {
+	m_privateLimitGame.removeIf([gameId](const QHash<QString, unsigned>::iterator it) {
+		return it.value() == gameId;
+	});
 	m_gameListModel.removeGame(gameId);
 	++m_gameListRevision;
 	emit gameListRevisionChanged();
@@ -848,6 +855,11 @@ void LobbyHandler::onGameListRemove(unsigned gameId)
 
 void LobbyHandler::onGameListUpdateMode(unsigned gameId, int mode)
 {
+	// The game is over (or starts anew): the held back messages went out, the
+	// limit notice for its players ends here.
+	m_privateLimitGame.removeIf([gameId](const QHash<QString, unsigned>::iterator it) {
+		return it.value() == gameId;
+	});
 	m_gameListModel.updateGameMode(gameId, mode);
 	refreshGameInfo(gameId);
 	++m_gameListRevision;
@@ -890,10 +902,12 @@ void LobbyHandler::setMyPlayerInfo(unsigned playerId, const QString &playerName)
 	if (m_myPlayerName != playerName) {
 		m_myPlayerName = playerName;
 		emit myPlayerNameChanged();
-		// The first point after the login at which your own nick is settled: from
-		// here on the inbox of this account applies.
-		setPrivateMessageOwner(playerName);
 	}
+	// The first point after the login at which your own nick is settled: from
+	// here on the inbox of this account applies. Outside the check above:
+	// setSession() clears the owner for every new connection, and a reconnect
+	// with the same nick would otherwise leave the inbox empty and unsaved.
+	setPrivateMessageOwner(playerName);
 
 	emit gameContextChanged();
 }
@@ -1160,6 +1174,33 @@ void LobbyHandler::syncPlayerGameMembership()
 	const QList<unsigned> playerIds = m_playerListModel.playerIds();
 	for (const unsigned playerId : playerIds)
 		m_playerListModel.setPlayerGameId(playerId, gameIdOfPlayer.value(playerId, 0));
+}
+
+void LobbyHandler::removeStalePlayerListDuplicates(unsigned playerId, const QString &playerName)
+{
+	// The server allows every name only once: a login with a name already in
+	// use replaces the old session. If its playerListLeft got lost, the old
+	// entry stays behind with the old id - private messages to it are rejected.
+	// To be on the safe side, entries of players seated in a running game are
+	// kept; their session ends regularly when the game does.
+	if (!m_session || playerName.isEmpty())
+		return;
+
+	QList<unsigned> staleIds;
+	const int count = m_playerListModel.rowCount();
+	for (int i = 0; i < count; ++i) {
+		const QModelIndex idx = m_playerListModel.index(i);
+		const unsigned otherId = m_playerListModel.data(idx, PlayerListModel::PlayerIdRole).toUInt();
+		if (otherId == playerId
+				|| m_playerListModel.data(idx, PlayerListModel::PlayerNameRole).toString() != playerName)
+			continue;
+		const unsigned gameIdOfOther = m_session->getGameIdOfPlayer(otherId);
+		if (gameIdOfOther && m_session->getClientGameInfo(gameIdOfOther).mode == GAME_MODE_STARTED)
+			continue;
+		staleIds.append(otherId);
+	}
+	for (const unsigned staleId : staleIds)
+		m_playerListModel.removePlayer(staleId);
 }
 
 QVariantMap LobbyHandler::playerListEntry(int row) const
@@ -1514,6 +1555,10 @@ void LobbyHandler::sendChatMessage(const QString &message)
 			const QString targetName = resolvedPlayerName(targetId);
 			pushPrivateMessageSentLine(targetName, text);
 			appendPrivateMessage(targetName, text, true);
+			// The PM dialog shows this notice permanently, the chat line needs it once.
+			const QString notice = privateMessageNotice(targetName);
+			if (!notice.isEmpty())
+				postLocalChatNote(notice);
 		} else {
 			// Lobby chat (includes /me actions — server echoes them back)
 			while (!text.isEmpty() && text.toUtf8().size() > 128)
@@ -1722,6 +1767,21 @@ void LobbyHandler::onNetworkNotification(int notificationId)
 		// The AFK kick of the server. The countdown warning that preceded it is closed by the
 		// onRemovedFromGame handler in pokerth.qml.
 		msgText = tr("You were removed due to inactivity.");
+		break;
+	case NTF_NET_NEW_RELEASE_AVAILABLE:
+	case NTF_NET_OUTDATED_BETA:
+		// Sent with every server announce, i.e. on each (re)connect: tell it once
+		// per program run. The server accepts the current and the previous QML
+		// release (MIN_BUILD_ID_QML), so this version stops working with the next one.
+		if (m_updateNoticeShown)
+			return;
+		m_updateNoticeShown = true;
+		msgText = tr("A new release of PokerTH is available.<br><br>Your version %1 can still be used for now, "
+					 "but the server only supports the current and the previous release. "
+					 "After the next release this version can no longer connect.<br><br>"
+					 "Please update PokerTH where you installed it from, or download it from "
+					 "<a href=\"https://www.pokerth.net/\">www.pokerth.net</a>.")
+				  .arg(QStringLiteral(POKERTH_BETA_RELEASE_STRING));
 		break;
 	default:
 		return;   // do not show unknown IDs (as in the widgets client)
@@ -2301,14 +2361,74 @@ unsigned LobbyHandler::playerIdByName(const QString &playerName) const
 	return 0;
 }
 
+QString LobbyHandler::privateMessageNotice(const QString &playerName) const
+{
+	const unsigned playerId = playerIdByName(playerName);
+	if (!m_session)
+		return QString();
+	// Offline: only an existing conversation can be continued.
+	if (playerId == 0) {
+		if (!m_privateThreads.contains(playerName))
+			return QString();
+		if (m_privateLimitOffline.contains(playerName))
+			return tr("Not delivered: %1 is offline and already has messages from you waiting. "
+					  "You can write again once %1 has logged in.").arg(playerName);
+		return tr("%1 is offline. Your messages will be delivered at the next login.").arg(playerName);
+	}
+	if (!isPlayerInRunningGame(playerId))
+		return QString();
+	if (m_privateLimitGame.value(playerName) == m_session->getGameIdOfPlayer(playerId))
+		return tr("Not delivered: %1 is still playing and already has messages from you waiting. "
+				  "You can write again once %1 is back in the lobby.").arg(playerName);
+	return tr("%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.")
+		   .arg(playerName);
+}
+
+void LobbyHandler::onPrivateChatLimitReached(const QString &playerName, const QString &message)
+{
+	Q_UNUSED(message);
+	if (!m_session || playerName.isEmpty())
+		return;
+	const unsigned playerId = playerIdByName(playerName);
+	if (playerId == 0)
+		m_privateLimitOffline.insert(playerName);
+	else
+		m_privateLimitGame.insert(playerName, m_session->getGameIdOfPlayer(playerId));
+	postLocalChatNote(privateMessageNotice(playerName));
+	++m_privateMessagesRevision;
+	emit privateMessagesChanged();
+}
+
 void LobbyHandler::sendPrivateMessageToName(const QString &playerName, const QString &message)
 {
 	const unsigned targetId = playerIdByName(playerName);
 	if (targetId == 0) {
+		// Offline players are not in the player list - writing to them is only
+		// possible from an existing conversation, like reading it again. The
+		// server holds the message back until the next login.
+		if (m_privateThreads.contains(playerName)) {
+			sendOfflinePrivateMessage(playerName, message);
+			return;
+		}
 		emit errorOccurred(tr("%1 is not in the lobby at the moment.").arg(playerName));
 		return;
 	}
 	sendPrivateMessage(targetId, message);
+}
+
+void LobbyHandler::sendOfflinePrivateMessage(const QString &playerName, const QString &message)
+{
+	// The same checks as sendPrivateMessage(), as far as an offline partner allows.
+	if (!m_session || m_gameRunning || isMyPlayerGuest())
+		return;
+	QString text = message.trimmed();
+	while (!text.isEmpty() && text.toUtf8().size() > 128)
+		text.chop(1);
+	if (text.isEmpty())
+		return;
+	m_session->sendPrivateChatMessageToName(playerName.toStdString(), text.toStdString());
+	pushPrivateMessageSentLine(playerName, text);
+	appendPrivateMessage(playerName, text, true);
 }
 
 bool LobbyHandler::chatDarkMode() const

@@ -75,6 +75,10 @@
 #define SERVER_PROCESS_SEND_INTERVAL_MSEC			10
 #define SERVER_AVATAR_CACHE_CLEANUP_INTERVAL_SEC		86400
 #define SERVER_SHADOW_MUTE_REFRESH_INTERVAL_SEC		10		// how long a new or lifted shadow mute may take to apply
+#define SERVER_MAX_PENDING_PM_PER_SENDER			2		// held back private messages from one sender to one player
+#define SERVER_MAX_PENDING_PM_PER_TARGET			20		// held back private messages to one player, all senders together
+#define SERVER_MAX_PENDING_PM_FROM_SENDER			20		// held back private messages of one sender, all players together
+#define SERVER_PENDING_PM_MAX_AGE_SEC				(30 * 86400)	// held back private messages are dropped after this
 
 #define SERVER_INIT_LOGIN_CLIENT_LOCK_SEC			NetHelper::GetLoginLockSec()
 #define SERVER_INIT_LOGIN_CLIENT_BURST				5		// inits one address may send back to back before the rate limit applies
@@ -210,6 +214,7 @@ public:
 
 	virtual void SignalKickPlayer(unsigned playerId)
 	{
+		LOG_MSG("Chat cleaner kicks player \"" << m_server.GetPlayerNameFromId(playerId) << "\" (id:" << playerId << ").");
 		m_server.RemovePlayer(playerId, ERR_NET_PLAYER_KICKED);
 	}
 
@@ -217,6 +222,7 @@ public:
 	{
 		string playerName(m_server.GetPlayerNameFromId(playerId));
 		if (!playerName.empty()) {
+			LOG_MSG("Chat cleaner bans player \"" << playerName << "\" (id:" << playerId << ").");
 			m_server.GetBanManager().BanPlayerName(playerName, 1);
 			m_server.RemovePlayer(playerId, ERR_NET_PLAYER_KICKED);
 		}
@@ -318,6 +324,16 @@ public:
 		m_server.SendAdminBanPlayerResult(requestId, replyId, false);
 	}
 
+	virtual void PendingPrivateMessagesLoaded(std::list<DBPendingPrivateMessage> messages)
+	{
+		m_server.HandlePendingPrivateMessagesLoaded(messages);
+	}
+
+	virtual void PlayerIdByName(unsigned requestId, DB_id playerId, std::string /*playerName*/)
+	{
+		m_server.HandlePlayerIdByName(requestId, playerId);
+	}
+
 private:
 	ServerLobbyThread &m_server;
 };
@@ -327,6 +343,7 @@ ServerLobbyThread::ServerLobbyThread(GuiInterface &gui, ServerMode mode, ConfigF
 									 AvatarManager &avatarManager, boost::shared_ptr<boost::asio::io_context> ioService)
 	: m_ioService(ioService), m_authContext(NULL), m_gui(gui), m_avatarManager(avatarManager),
 	  m_mode(mode), m_serverConfig(serverConfig), m_curGameId(0), m_curUniquePlayerId(0), m_curSessionId(INVALID_SESSION + 1),
+	  m_pendingPmLoaded(false), m_nextPendingPmId(1), m_curPendingPmLookupId(0),
 	  m_statDataChanged(false), m_removeGameTimer(*ioService),
 	  m_saveStatisticsTimer(*ioService), m_loginLockTimer(*ioService),
 	  m_avatarCleanupTimer(*ioService), m_shadowMuteTimer(*ioService),
@@ -341,6 +358,16 @@ ServerLobbyThread::ServerLobbyThread(GuiInterface &gui, ServerMode mode, ConfigF
 	m_discordWebhook.reset(new DiscordWebhookSender(discordUrl));
 	if (m_discordWebhook->IsEnabled()) {
 		LOG_MSG("Discord chat webhook enabled.");
+	}
+	// Lobby chat log for moderation, in the avatar cache dir which is synced
+	// to the web server. Dedicated servers only - clients host LAN games.
+	boost::filesystem::path chatLogDir;
+	const std::string cacheDir = m_serverConfig.readConfigString("CacheDir");
+	if (mode != SERVER_MODE_LAN && !cacheDir.empty())
+		chatLogDir = boost::filesystem::path(cacheDir) / "chatlog";
+	m_lobbyChatLog.reset(new ChatLogWriter(chatLogDir.string(), "lobby-chat", m_serverConfig.readConfigInt("ServerChatLogRotateHours")));
+	if (m_lobbyChatLog->IsEnabled()) {
+		LOG_MSG("Lobby chat log: " << m_lobbyChatLog->GetFileName());
 	}
 	DBFactory dbFactory;
 	m_database = dbFactory.CreateServerDBObject(*m_internalServerCallback, m_ioService);
@@ -1330,8 +1357,7 @@ ServerLobbyThread::HandleNetPacketInit(boost::shared_ptr<SessionData> session, c
 		serverPassword = initMessage.authserverpassword();
 	}
 	if (serverPassword != m_serverConfig.readConfigString("ServerPassword")) {
-		LOG_MSG("Invalid server password attempt from "
-				<< session->GetClientAddr() << " (\"" << serverPassword << "\") " << " expected \"" << m_serverConfig.readConfigString("ServerPassword") << "\".");
+		LOG_MSG("Invalid server password attempt from " << session->GetClientAddr() << ".");
 		SessionError(session, ERR_NET_INVALID_PASSWORD);
 		return;
 	}
@@ -1583,46 +1609,7 @@ ServerLobbyThread::HandleNetPacketRetrievePlayerInfo(boost::shared_ptr<SessionDa
 				tmpPlayer = pos->second;
 		}
 
-		boost::shared_ptr<NetPacket> packet(new NetPacket);
-		packet->GetMsg()->set_messagetype(PokerTHMessage::Type_PlayerInfoReplyMessage);
-		PlayerInfoReplyMessage *netPlayerInfoReply = packet->GetMsg()->mutable_playerinforeplymessage();
-		netPlayerInfoReply->set_playerid(playerId);
-
-		if (tmpPlayer) {
-			// Send player info to client.
-			PlayerInfoReplyMessage::PlayerInfoData *data = netPlayerInfoReply->mutable_playerinfodata();
-
-			data->set_playername(tmpPlayer->GetName());
-			data->set_ishuman(tmpPlayer->GetType() == PLAYER_TYPE_HUMAN);
-			data->set_playerrights(static_cast<NetPlayerInfoRights>(tmpPlayer->GetRights()));
-			if (!tmpPlayer->GetCountry().empty()) {
-				data->set_countrycode(tmpPlayer->GetCountry());
-			}
-			// The avatar type follows from the file name. If no file is
-			// known it would be AVATAR_FILE_TYPE_UNKNOWN - and a value
-			// outside NetAvatarType makes the required field fail at the
-			// receiver, which renders the *entire* reply unreadable and
-			// makes it be discarded without comment: the player would
-			// stay as "#<id>" permanently in every client. So without a
-			// valid type better to reply without an avatar - the clients
-			// fetch avatars separately anyway. AvatarManager::AvatarFileToNetPackets
-			// already has the same protection.
-			if (!tmpPlayer->GetAvatarMD5().IsZero()) {
-				const AvatarFileType avatarFileType =
-					AvatarManager::GetAvatarFileType(tmpPlayer->GetAvatarFile());
-				if (avatarFileType == AVATAR_FILE_TYPE_UNKNOWN) {
-					LOG_ERROR("Player id " << playerId << " has an avatar hash but no usable avatar file (\""
-							  << tmpPlayer->GetAvatarFile() << "\") - sending player info without avatar.");
-				} else {
-					PlayerInfoReplyMessage::PlayerInfoData::AvatarData *avatarData = data->mutable_avatardata();
-					avatarData->set_avatartype(static_cast<NetAvatarType>(avatarFileType));
-					avatarData->set_avatarhash(tmpPlayer->GetAvatarMD5().GetData(), MD5_DATA_SIZE);
-				}
-			}
-		} else {
-			// Unknown player id - do not set any data.
-		}
-		GetSender().Send(session, packet);
+		GetSender().Send(session, CreateNetPacketPlayerInfoReply(playerId, tmpPlayer));
 	}
 }
 
@@ -1768,15 +1755,22 @@ ServerLobbyThread::HandleNetPacketRejoinGame(boost::shared_ptr<SessionData> sess
 {
 	// Rejoin a running game.
 	GameMap::iterator pos = m_gameMap.find(rejoinGame.gameid());
+	const std::string playerName = session->GetPlayerData() ? session->GetPlayerData()->GetName() : std::string("(unknown)");
 
 	if (pos != m_gameMap.end()) {
 		boost::shared_ptr<ServerGame> game = pos->second;
 		if (game->IsRunning()) {
+			LOG_MSG("Player \"" << playerName << "\" session #" << session->GetId()
+					<< " requests rejoin of game " << rejoinGame.gameid() << ".");
 			MoveSessionToGame(game, session, rejoinGame.autoleave(), false);
 		} else {
+			LOG_MSG("Rejoin of game " << rejoinGame.gameid() << " by player \"" << playerName
+					<< "\" failed: game not running.");
 			SendJoinGameFailed(session, rejoinGame.gameid(), NTF_NET_JOIN_REJOIN_FAILED);
 		}
 	} else {
+		LOG_MSG("Rejoin of game " << rejoinGame.gameid() << " by player \"" << playerName
+				<< "\" failed: game does not exist.");
 		SendJoinGameFailed(session, rejoinGame.gameid(), NTF_NET_JOIN_GAME_INVALID);
 	}
 }
@@ -1806,7 +1800,14 @@ ServerLobbyThread::HandleNetPacketChatRequest(boost::shared_ptr<SessionData> ses
 			netChat->set_playerid(session->GetPlayerData()->GetUniqueId());
 			netChat->set_chattext(chatMsg);
 
-			if (GetBanManager().IsShadowMuted(session->GetPlayerData()->GetDBId())) {
+			const bool shadowMuted = GetBanManager().IsShadowMuted(session->GetPlayerData()->GetDBId());
+			m_lobbyChatLog->WriteChatMessage(
+				session->GetPlayerData()->GetDBId(),
+				session->GetPlayerData()->GetName(),
+				chatMsg,
+				shadowMuted);
+
+			if (shadowMuted) {
 				// Shadow mute: echo to the sender only, exactly the packet
 				// everybody else would have received. Keep the chat cleaner
 				// out of it as well - a bot warning about lines nobody saw
@@ -1831,10 +1832,19 @@ ServerLobbyThread::HandleNetPacketChatRequest(boost::shared_ptr<SessionData> ses
 					chatMsg);
 			}
 			chatSent = true;
-		} else if (!chatRequest.has_targetgameid() && chatRequest.has_targetplayerid()) {
-			boost::shared_ptr<SessionData> targetSession = m_sessionManager.GetSessionByUniquePlayerId(chatRequest.targetplayerid());
-			if (!targetSession)
-				targetSession = m_gameSessionManager.GetSessionByUniquePlayerId(chatRequest.targetplayerid());
+		} else if (!chatRequest.has_targetgameid() && (chatRequest.has_targetplayerid() || chatRequest.has_targetplayername())) {
+			boost::shared_ptr<SessionData> targetSession;
+			if (chatRequest.has_targetplayername()) {
+				// Written to by name from an existing conversation - the
+				// player may be offline, or online after all.
+				targetSession = m_sessionManager.GetSessionByPlayerName(chatRequest.targetplayername());
+				if (!targetSession)
+					targetSession = m_gameSessionManager.GetSessionByPlayerName(chatRequest.targetplayername());
+			} else {
+				targetSession = m_sessionManager.GetSessionByUniquePlayerId(chatRequest.targetplayerid());
+				if (!targetSession)
+					targetSession = m_gameSessionManager.GetSessionByUniquePlayerId(chatRequest.targetplayerid());
+			}
 
 			if (targetSession && targetSession->GetPlayerData()) {
 				// Only allow private messages to players which are not in running games.
@@ -1865,7 +1875,21 @@ ServerLobbyThread::HandleNetPacketChatRequest(boost::shared_ptr<SessionData> ses
 						GetSender().Send(targetSession, packet);
 						chatSent = true;
 					}
+				} else if (session->AcquireChatToken()) {
+					// No private messages at a running table (collusion), but
+					// hold them back until the player is out of the game.
+					const PendingPmResult result = QueuePendingPrivateMessage(
+													   session->GetPlayerData(), targetSession->GetPlayerData()->GetDBId(), chatRequest.chattext());
+					if (result == PendingPmQueued) {
+						chatSent = true;
+					} else if (result == PendingPmLimit) {
+						SendPrivateChatLimitReject(session, chatRequest.chattext(),
+												   targetSession->GetPlayerData()->GetUniqueId(), targetSession->GetPlayerData()->GetName());
+						return;
+					}
 				}
+			} else if (chatRequest.has_targetplayername() && session->AcquireChatToken()) {
+				chatSent = RequestOfflinePrivateMessage(session, chatRequest.targetplayername(), chatRequest.chattext());
 			}
 		}
 	}
@@ -2111,9 +2135,28 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 	u_int32_t rejoinGameId = GetRejoinGameIdForPlayer(session->GetPlayerData()->GetName(), session->GetPlayerData()->GetOldGuid(), rejoinPlayerId);
 
 	if (rejoinGameId != 0) {
+		LOG_MSG("Offering rejoin of game " << rejoinGameId << " to player \"" << session->GetPlayerData()->GetName()
+				<< "\" session #" << session->GetId() << ".");
 		// Offer rejoin, and disconnect current player with the same name.
 		InternalRemovePlayer(rejoinPlayerId, ERR_NET_PLAYER_NAME_IN_USE);
+		// The seat keeps the old id and guid until the rejoin is performed at
+		// the start of the next hand. A second login with the same old guid in
+		// that window (e.g. a client retrying its reconnect) is offered the
+		// rejoin as well, while the session of the first login lives on under
+		// a different id - two sessions with the same name, the older one a
+		// ghost in all lobby lists. Disconnect it, too.
+		const std::string &playerName = session->GetPlayerData()->GetName();
+		for (SessionManager *manager : {&m_sessionManager, &m_gameSessionManager}) {
+			boost::shared_ptr<SessionData> otherSession = manager->GetSessionByPlayerName(playerName);
+			if (otherSession && otherSession != session && otherSession->GetPlayerData()
+					&& otherSession->GetPlayerData()->GetUniqueId() != rejoinPlayerId) {
+				LOG_MSG("Disconnecting session #" << otherSession->GetId() << " of player \"" << playerName
+						<< "\": replaced by rejoin session #" << session->GetId() << ".");
+				InternalRemovePlayer(otherSession->GetPlayerData()->GetUniqueId(), ERR_NET_PLAYER_NAME_IN_USE);
+			}
+		}
 	} else {
+		LogMissingRejoinOffer(session);
 		// Check whether this player is already connected.
 		unsigned previousPlayerId = GetPlayerId(session->GetPlayerData()->GetName());
 		if (previousPlayerId != 0 && previousPlayerId != session->GetPlayerData()->GetUniqueId()) {
@@ -2185,6 +2228,10 @@ ServerLobbyThread::EstablishSession(boost::shared_ptr<SessionData> session)
 	SendPlayerList(session);
 	// Send the game list to the client.
 	SendGameList(session);
+	// Back at a running table, the held back private messages wait until the
+	// player is out of the game again.
+	if (rejoinGameId == 0)
+		DeliverPendingPrivateMessages(session);
 
 	// Session is now established.
 	session->SetState(SessionData::Established);
@@ -2393,6 +2440,7 @@ ServerLobbyThread::TimerCleanupAvatarCache(const boost::system::error_code &ec)
 {
 	if (!ec) {
 		m_avatarManager.RemoveOldAvatarCacheEntries();
+		m_database->DeleteExpiredPendingPrivateMessages();
 		m_avatarCleanupTimer.expires_after(seconds(SERVER_AVATAR_CACHE_CLEANUP_INTERVAL_SEC));
 		m_avatarCleanupTimer.async_wait(
 			boost::bind(
@@ -2565,8 +2613,8 @@ ServerLobbyThread::InternalRemoveGame(boost::shared_ptr<ServerGame> game)
 	}
 	// Return any players/spectators still in the game to the lobby with full
 	// bookkeeping (removal from the game session manager + GamePlayerLeft
-	// notifications). Must happen before RemoveAllSessions(), which merely
-	// slams the sockets shut and would otherwise leave ghost players behind.
+	// notifications). Must happen before RemoveAllSessions(), which would
+	// disconnect them instead.
 	game->MoveAllSessionsToLobby();
 	// Remove game from list.
 	m_gameMap.erase(game->GetId());
@@ -2649,10 +2697,237 @@ ServerLobbyThread::HandleReAddedSession(boost::shared_ptr<SessionData> session)
 		session->ResetGlobalTimeout();
 		// Add session to lobby list.
 		m_sessionManager.AddSession(session);
+		DeliverPendingPrivateMessages(session);
 	} else {
 		// Gracefully close this session.
 		SessionError(session, ERR_NET_SERVER_FULL);
 	}
+}
+
+ServerLobbyThread::PendingPmResult
+ServerLobbyThread::QueuePendingPrivateMessage(boost::shared_ptr<PlayerData> sender, DB_id targetDBId, const std::string &text)
+{
+	// Guests and servers without a database have no db id.
+	const DB_id senderDBId = sender->GetDBId();
+	if (!m_pendingPmLoaded || senderDBId == DB_ID_INVALID || targetDBId == DB_ID_INVALID)
+		return PendingPmUnavailable;
+
+	RemoveExpiredPendingPrivateMessages();
+
+	// Counted by db id, so that logging in again does not reset the limits.
+	unsigned toTarget = 0, fromSender = 0, fromSenderToTarget = 0;
+	for (const PendingPrivateMessageMap::value_type &entry : m_pendingPrivateMessages) {
+		if (entry.first == targetDBId)
+			toTarget = static_cast<unsigned>(entry.second.size());
+		for (const PendingPrivateMessage &msg : entry.second) {
+			if (msg.sender->GetDBId() == senderDBId) {
+				++fromSender;
+				if (entry.first == targetDBId)
+					++fromSenderToTarget;
+			}
+		}
+	}
+	if (fromSenderToTarget >= SERVER_MAX_PENDING_PM_PER_SENDER || toTarget >= SERVER_MAX_PENDING_PM_PER_TARGET
+			|| fromSender >= SERVER_MAX_PENDING_PM_FROM_SENDER)
+		return PendingPmLimit;
+
+	PendingPrivateMessage msg;
+	msg.id = m_nextPendingPmId++;
+	msg.sender = sender;
+	msg.text = text;
+	msg.queuedAt = std::chrono::steady_clock::now();
+	m_pendingPrivateMessages[targetDBId].push_back(msg);
+	m_database->StorePendingPrivateMessage(msg.id, targetDBId, senderDBId, text);
+	return PendingPmQueued;
+}
+
+bool
+ServerLobbyThread::RequestOfflinePrivateMessage(boost::shared_ptr<SessionData> sender, const std::string &targetName, const std::string &text)
+{
+	if (!m_pendingPmLoaded || sender->GetPlayerData()->GetDBId() == DB_ID_INVALID)
+		return false;
+	PendingPmNameLookup lookup;
+	lookup.sender = sender;
+	lookup.targetName = targetName;
+	lookup.text = text;
+	const unsigned requestId = ++m_curPendingPmLookupId;
+	m_pendingPmLookups[requestId] = lookup;
+	m_database->AsyncQueryPlayerIdByName(requestId, targetName);
+	return true;
+}
+
+void
+ServerLobbyThread::HandlePlayerIdByName(unsigned requestId, DB_id playerId)
+{
+	std::map<unsigned, PendingPmNameLookup>::iterator pos = m_pendingPmLookups.find(requestId);
+	if (pos == m_pendingPmLookups.end())
+		return;
+	const PendingPmNameLookup lookup = pos->second;
+	m_pendingPmLookups.erase(pos);
+	boost::shared_ptr<SessionData> sender = lookup.sender.lock();
+	if (!sender || !sender->GetPlayerData() || sender->GetState() == SessionData::Closed)
+		return;
+
+	PendingPmResult result = PendingPmUnavailable;
+	if (playerId != DB_ID_INVALID && playerId != sender->GetPlayerData()->GetDBId())
+		result = QueuePendingPrivateMessage(sender->GetPlayerData(), playerId, lookup.text);
+
+	if (result == PendingPmQueued) {
+		// The player may have logged in while the name was looked up.
+		boost::shared_ptr<SessionData> target = GetSessionByDBId(playerId);
+		if (target && (target->GetState() & (SessionData::Established | SessionData::Game | SessionData::Spectating | SessionData::SpectatorWaiting))
+				&& IsOutsideRunningGame(target))
+			DeliverPendingPrivateMessages(target);
+	} else if (result == PendingPmLimit) {
+		SendPrivateChatLimitReject(sender, lookup.text, 0, lookup.targetName);
+	} else {
+		// No such account (or a guest name).
+		boost::shared_ptr<NetPacket> packet(new NetPacket);
+		packet->GetMsg()->set_messagetype(PokerTHMessage::Type_ChatRejectMessage);
+		ChatRejectMessage *netReject = packet->GetMsg()->mutable_chatrejectmessage();
+		netReject->set_chattext(lookup.text);
+		GetSender().Send(sender, packet);
+	}
+}
+
+void
+ServerLobbyThread::SendPrivateChatLimitReject(boost::shared_ptr<SessionData> sender, const std::string &text, unsigned targetPlayerId, const std::string &targetName)
+{
+	boost::shared_ptr<NetPacket> packet(new NetPacket);
+	packet->GetMsg()->set_messagetype(PokerTHMessage::Type_ChatRejectMessage);
+	ChatRejectMessage *netReject = packet->GetMsg()->mutable_chatrejectmessage();
+	netReject->set_chattext(text);
+	netReject->set_rejectreason(ChatRejectMessage::rejectReasonPendingLimit);
+	netReject->set_targetplayerid(targetPlayerId);
+	netReject->set_targetplayername(targetName);
+	GetSender().Send(sender, packet);
+}
+
+void
+ServerLobbyThread::HandlePendingPrivateMessagesLoaded(const std::list<DBPendingPrivateMessage> &messages)
+{
+	if (m_pendingPmLoaded)
+		return;
+
+	// One player data per sender. The sender is offline right now as far as
+	// the lobby knows - the delivery uses the session data instead once the
+	// sender is online.
+	std::map<DB_id, boost::shared_ptr<PlayerData> > senders;
+	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	unsigned count = 0;
+	for (const DBPendingPrivateMessage &stored : messages) {
+		// Continue after the highest id, even of the rows dropped below.
+		m_nextPendingPmId = std::max(m_nextPendingPmId, stored.id + 1);
+		// The sender account is gone, or the message expired.
+		if (stored.senderName.empty() || stored.ageSec >= SERVER_PENDING_PM_MAX_AGE_SEC)
+			continue;
+		boost::shared_ptr<PlayerData> &sender = senders[stored.senderId];
+		if (!sender) {
+			sender.reset(new PlayerData(GetNextUniquePlayerId(), 0, PLAYER_TYPE_HUMAN, PLAYER_RIGHTS_NORMAL, false));
+			sender->SetName(stored.senderName);
+			sender->SetDBId(stored.senderId);
+			sender->SetCountry(stored.senderCountry);
+		}
+		PendingPrivateMessage msg;
+		msg.id = stored.id;
+		msg.sender = sender;
+		msg.text = stored.text;
+		msg.queuedAt = now - std::chrono::seconds(stored.ageSec);
+		m_pendingPrivateMessages[stored.recipientId].push_back(msg);
+		++count;
+	}
+	m_pendingPmLoaded = true;
+	LOG_MSG("Held back private messages enabled, " << count << " waiting.");
+
+	// Whoever is online already gets theirs now.
+	for (SessionManager *manager : {&m_sessionManager, &m_gameSessionManager}) {
+		for (const boost::shared_ptr<SessionData> &session : manager->GetAllSessions()) {
+			if ((session->GetState() & (SessionData::Established | SessionData::Game | SessionData::Spectating | SessionData::SpectatorWaiting))
+					&& IsOutsideRunningGame(session))
+				DeliverPendingPrivateMessages(session);
+		}
+	}
+}
+
+bool
+ServerLobbyThread::IsOutsideRunningGame(boost::shared_ptr<SessionData> session)
+{
+	boost::shared_ptr<ServerGame> tmpGame = session->GetGame();
+	return !tmpGame || !tmpGame->IsRunning();
+}
+
+void
+ServerLobbyThread::DeliverPendingPrivateMessages(boost::shared_ptr<SessionData> target)
+{
+	if (!target->GetPlayerData() || target->GetPlayerData()->GetDBId() == 0)
+		return;
+	PendingPrivateMessageMap::iterator pos = m_pendingPrivateMessages.find(target->GetPlayerData()->GetDBId());
+	if (pos == m_pendingPrivateMessages.end())
+		return;
+	std::deque<PendingPrivateMessage> pending;
+	pending.swap(pos->second);
+	m_pendingPrivateMessages.erase(pos);
+
+	// Right after the login the client does not know its own name yet, and the
+	// QML client only opens the inbox of the account with it - a message
+	// arriving earlier would be dropped from the inbox again.
+	GetSender().Send(target, CreateNetPacketPlayerInfoReply(target->GetPlayerData()->GetUniqueId(), target->GetPlayerData()));
+
+	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	unsigned long long lastId = 0;
+	for (const PendingPrivateMessage &msg : pending) {
+		lastId = std::max(lastId, msg.id);
+		if (now - msg.queuedAt >= std::chrono::seconds(SERVER_PENDING_PM_MAX_AGE_SEC))
+			continue;
+		// The sender may have logged in again since (new player id) or left.
+		boost::shared_ptr<PlayerData> sender = msg.sender;
+		boost::shared_ptr<SessionData> senderSession = GetSessionByDBId(sender->GetDBId());
+		if (senderSession && senderSession->GetPlayerData())
+			sender = senderSession->GetPlayerData();
+
+		// The receiver may not know the sender: joined while the receiver was
+		// at the table, or already gone. Send the name along first, otherwise
+		// the client drops the message.
+		GetSender().Send(target, CreateNetPacketPlayerInfoReply(sender->GetUniqueId(), sender));
+
+		boost::shared_ptr<NetPacket> packet(new NetPacket);
+		packet->GetMsg()->set_messagetype(PokerTHMessage::Type_ChatMessage);
+		ChatMessage *netChat = packet->GetMsg()->mutable_chatmessage();
+		netChat->set_chattype(ChatMessage::chatTypePrivate);
+		netChat->set_playerid(sender->GetUniqueId());
+		netChat->set_chattext(msg.text);
+		GetSender().Send(target, packet);
+	}
+	m_database->DeletePendingPrivateMessages(target->GetPlayerData()->GetDBId(), lastId);
+}
+
+void
+ServerLobbyThread::RemoveExpiredPendingPrivateMessages()
+{
+	// Messages are queued in order, so the expired ones are at the front.
+	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	PendingPrivateMessageMap::iterator i = m_pendingPrivateMessages.begin();
+	while (i != m_pendingPrivateMessages.end()) {
+		while (!i->second.empty() && now - i->second.front().queuedAt >= std::chrono::seconds(SERVER_PENDING_PM_MAX_AGE_SEC))
+			i->second.pop_front();
+		if (i->second.empty())
+			i = m_pendingPrivateMessages.erase(i);
+		else
+			++i;
+	}
+}
+
+boost::shared_ptr<SessionData>
+ServerLobbyThread::GetSessionByDBId(DB_id dbId) const
+{
+	for (const SessionManager *manager : {&m_sessionManager, &m_gameSessionManager}) {
+		for (const boost::shared_ptr<SessionData> &session : manager->GetAllSessions()) {
+			if (session->GetPlayerData() && session->GetPlayerData()->GetDBId() == dbId
+					&& session->GetState() != SessionData::Closed)
+				return session;
+		}
+	}
+	return boost::shared_ptr<SessionData>();
 }
 
 void
@@ -2689,6 +2964,8 @@ ServerLobbyThread::SessionError(boost::shared_ptr<SessionData> session, int erro
 		if (errorCode == ERR_NET_SESSION_TIMED_OUT) {
 			boost::shared_ptr<ServerGame> game = session->GetGame();
 			if (game && session->GetPlayerData()) {
+				LOG_MSG("Player \"" << session->GetPlayerData()->GetName() << "\" session #" << session->GetId()
+						<< " inactive for " << SERVER_INGAME_ACTIVITY_TIMEOUT_SEC << "s in game " << game->GetId() << " - kicking.");
 				game->KickPlayer(session->GetPlayerData()->GetUniqueId());
 				return;
 			}
@@ -2976,6 +3253,50 @@ ServerLobbyThread::CreateNetPacketPlayerListNew(unsigned playerId)
 }
 
 boost::shared_ptr<NetPacket>
+ServerLobbyThread::CreateNetPacketPlayerInfoReply(unsigned playerId, boost::shared_ptr<PlayerData> tmpPlayer)
+{
+	boost::shared_ptr<NetPacket> packet(new NetPacket);
+	packet->GetMsg()->set_messagetype(PokerTHMessage::Type_PlayerInfoReplyMessage);
+	PlayerInfoReplyMessage *netPlayerInfoReply = packet->GetMsg()->mutable_playerinforeplymessage();
+	netPlayerInfoReply->set_playerid(playerId);
+
+	if (tmpPlayer) {
+		// Send player info to client.
+		PlayerInfoReplyMessage::PlayerInfoData *data = netPlayerInfoReply->mutable_playerinfodata();
+
+		data->set_playername(tmpPlayer->GetName());
+		data->set_ishuman(tmpPlayer->GetType() == PLAYER_TYPE_HUMAN);
+		data->set_playerrights(static_cast<NetPlayerInfoRights>(tmpPlayer->GetRights()));
+		if (!tmpPlayer->GetCountry().empty()) {
+			data->set_countrycode(tmpPlayer->GetCountry());
+		}
+		// The avatar type follows from the file name. If no file is
+		// known it would be AVATAR_FILE_TYPE_UNKNOWN - and a value
+		// outside NetAvatarType makes the required field fail at the
+		// receiver, which renders the *entire* reply unreadable and
+		// makes it be discarded without comment: the player would
+		// stay as "#<id>" permanently in every client. So without a
+		// valid type better to reply without an avatar - the clients
+		// fetch avatars separately anyway. AvatarManager::AvatarFileToNetPackets
+		// already has the same protection.
+		if (!tmpPlayer->GetAvatarMD5().IsZero()) {
+			const AvatarFileType avatarFileType =
+				AvatarManager::GetAvatarFileType(tmpPlayer->GetAvatarFile());
+			if (avatarFileType == AVATAR_FILE_TYPE_UNKNOWN) {
+				LOG_ERROR("Player id " << playerId << " has an avatar hash but no usable avatar file (\""
+						  << tmpPlayer->GetAvatarFile() << "\") - sending player info without avatar.");
+			} else {
+				PlayerInfoReplyMessage::PlayerInfoData::AvatarData *avatarData = data->mutable_avatardata();
+				avatarData->set_avatartype(static_cast<NetAvatarType>(avatarFileType));
+				avatarData->set_avatarhash(tmpPlayer->GetAvatarMD5().GetData(), MD5_DATA_SIZE);
+			}
+		}
+	}
+	// Unknown player id - do not set any data.
+	return packet;
+}
+
+boost::shared_ptr<NetPacket>
 ServerLobbyThread::CreateNetPacketPlayerListLeft(unsigned playerId)
 {
 	boost::shared_ptr<NetPacket> packet(new NetPacket);
@@ -3040,4 +3361,35 @@ ServerLobbyThread::GetRejoinGameIdForPlayer(const std::string &playerName, const
 		}
 	}
 	return retGameId;
+}
+
+void
+ServerLobbyThread::LogMissingRejoinOffer(boost::shared_ptr<SessionData> session)
+{
+	// Explain why a player who still has a seat in a running game is not
+	// offered a rejoin - otherwise this is not visible in the log at all.
+	const std::string &playerName = session->GetPlayerData()->GetName();
+	const std::string &oldGuid = session->GetPlayerData()->GetOldGuid();
+	GameMap::iterator i = m_gameMap.begin();
+	GameMap::iterator end = m_gameMap.end();
+	while (i != end) {
+		boost::shared_ptr<ServerGame> tmpGame = i->second;
+		if (tmpGame->IsRunning()) {
+			boost::shared_ptr<PlayerInterface> tmpPlayer = tmpGame->GetPlayerInterfaceFromGame(playerName);
+			if (tmpPlayer) {
+				const char *reason;
+				if (tmpPlayer->getMyCash() <= 0)
+					reason = "no cash left";
+				else if (tmpPlayer->getMyGuid().empty())
+					reason = "seat released";
+				else if (oldGuid.empty())
+					reason = "client sent no previous session id";
+				else
+					reason = "previous session id does not match";
+				LOG_MSG("No rejoin offer for player \"" << playerName << "\" session #" << session->GetId()
+						<< " in game " << tmpGame->GetId() << ": " << reason << ".");
+			}
+		}
+		++i;
+	}
 }

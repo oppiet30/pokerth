@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>Göster</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>Otomatik çek/pas</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>Sonraki el</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Lütfen parolayı yeniden girip tekrar deneyin.</translation>
         <translation>Etkin olmadığınız için oyundan çıkarıldınız.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>PokerTH&apos;in yeni bir sürümü mevcut.&lt;br&gt;&lt;br&gt;%1 sürümünüzü şimdilik kullanmaya devam edebilirsiniz, ancak sunucu yalnızca mevcut ve bir önceki sürümü destekliyor. Bir sonraki sürümden sonra bu sürüm artık bağlanamayacak.&lt;br&gt;&lt;br&gt;Lütfen PokerTH&apos;i yüklediğiniz yerden güncelleyin veya &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt; adresinden indirin.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>%1 şu anda lobide değil.</translation>
@@ -2386,6 +2396,26 @@ Lütfen parolayı yeniden girip tekrar deneyin.</translation>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>%1, meşgul olduğu için %2 oyununa giremiyor.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>İletilmedi: %1 hâlâ oynuyor ve sizden bekleyen mesajları zaten var. %1 lobiye döndüğünde yeniden yazabilirsiniz.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>%1 şu anda oynuyor. Mesajlarınız %1 lobiye döndüğünde iletilecek.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>İletilmedi: %1 çevrimdışı ve sizden bekleyen mesajları zaten var. %1 giriş yaptığında yeniden yazabilirsiniz.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>%1 çevrimdışı. Mesajlarınız bir sonraki girişte iletilecek.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Günlük dosyalarının oraya kaydedilmesi için lütfen PokerTH&apos;yi yeniden
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Lütfen kullanıcı adınızı ve parolanızı denetleyin.</translation>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ yok</translation>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ yok</translation>
         <translation>Masadaki yeriniz birkaç dakika daha ayrılmış kalır.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>Bağlantı sorunları</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>Sunucu yanıt vermiyor. Yanıt bekleniyor…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>Bağlantı koptu</translation>
     </message>

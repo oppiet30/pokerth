@@ -658,7 +658,7 @@
 <context>
     <name>GameActionBar</name>
     <message>
-        <location filename="../components/GameActionBar.qml" line="+1004"/>
+        <location filename="../components/GameActionBar.qml" line="+1014"/>
         <source>Show</source>
         <translation>Näytä</translation>
     </message>
@@ -676,6 +676,11 @@
         <location line="+0"/>
         <source>Auto Check/Fold</source>
         <translation>Auto tsekkaa/luovuta</translation>
+    </message>
+    <message>
+        <location line="+199"/>
+        <source>Next Hand</source>
+        <translation>Seuraava jako</translation>
     </message>
 </context>
 <context>
@@ -2304,6 +2309,11 @@ Kirjoita salasana uudestaan ja yritä uudelleen.</translation>
         <translation>Sinut poistettiin toimettomuuden vuoksi.</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>A new release of PokerTH is available.&lt;br&gt;&lt;br&gt;Your version %1 can still be used for now, but the server only supports the current and the previous release. After the next release this version can no longer connect.&lt;br&gt;&lt;br&gt;Please update PokerTH where you installed it from, or download it from &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</source>
+        <translation>PokerTH:sta on saatavilla uusi versio.&lt;br&gt;&lt;br&gt;Versiotasi %1 voi vielä toistaiseksi käyttää, mutta palvelin tukee vain nykyistä ja edellistä versiota. Seuraavan version jälkeen tällä versiolla ei voi enää muodostaa yhteyttä.&lt;br&gt;&lt;br&gt;Päivitä PokerTH sieltä, mistä asensit sen, tai lataa se osoitteesta &lt;a href=&quot;https://www.pokerth.net/&quot;&gt;www.pokerth.net&lt;/a&gt;.</translation>
+    </message>
+    <message>
         <location line="+584"/>
         <source>%1 is not in the lobby at the moment.</source>
         <translation>%1 ei ole tällä hetkellä aulassa.</translation>
@@ -2386,6 +2396,26 @@ Kirjoita salasana uudestaan ja yritä uudelleen.</translation>
         <location line="-226"/>
         <source>%1 cannot join %2 because he is busy.</source>
         <translation>%1 ei voi liittyä peliin %2, koska hän on varattu.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2351"/>
+        <source>Not delivered: %1 is still playing and already has messages from you waiting. You can write again once %1 is back in the lobby.</source>
+        <translation>Ei toimitettu: %1 pelaa vielä, ja sinulta on jo viestejä odottamassa. Voit kirjoittaa uudelleen, kun %1 on palannut aulaan.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2353"/>
+        <source>%1 is playing right now. Your messages will be delivered once %1 is back in the lobby.</source>
+        <translation>%1 pelaa parhaillaan. Viestisi toimitetaan, kun %1 on palannut aulaan.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2357"/>
+        <source>Not delivered: %1 is offline and already has messages from you waiting. You can write again once %1 has logged in.</source>
+        <translation>Ei toimitettu: %1 ei ole kirjautuneena, ja sinulta on jo viestejä odottamassa. Voit kirjoittaa uudelleen, kun %1 on kirjautunut sisään.</translation>
+    </message>
+    <message>
+        <location filename="../cpp/lobbyhandler.cpp" line="2359"/>
+        <source>%1 is offline. Your messages will be delivered at the next login.</source>
+        <translation>%1 ei ole kirjautuneena. Viestisi toimitetaan seuraavalla kirjautumiskerralla.</translation>
     </message>
 </context>
 <context>
@@ -3930,8 +3960,8 @@ Käynnistä PokerTH uudelleen, jotta lokitiedostot tallennetaan sinne.</translat
     <name>PreLoader</name>
     <message>
         <location filename="../pages/PreLoader.qml" line="+143"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
 </context>
 <context>
@@ -4890,8 +4920,8 @@ Tarkista käyttäjänimesi ja salasanasi.</translation>
     <name>SideMenu</name>
     <message>
         <location filename="../components/SideMenu.qml" line="+37"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+102"/>
@@ -5269,8 +5299,8 @@ esikatselua</translation>
     <name>pokerth</name>
     <message>
         <location filename="../pokerth.qml" line="+205"/>
-        <source>PokerTH - v2.1.10</source>
-        <translation>PokerTH - v2.1.10</translation>
+        <source>PokerTH - v2.1.11</source>
+        <translation>PokerTH - v2.1.11</translation>
     </message>
     <message>
         <location line="+297"/>
@@ -5374,7 +5404,17 @@ esikatselua</translation>
         <translation>Paikkasi pöydässä säilyy varattuna vielä muutaman minuutin.</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+60"/>
+        <source>Connection problems</source>
+        <translation>Yhteysongelmia</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server is not responding. Waiting for a response…</source>
+        <translation>Palvelin ei vastaa. Odotetaan vastausta…</translation>
+    </message>
+    <message>
+        <location line="+43"/>
         <source>Connection lost</source>
         <translation>Yhteys menetettiin</translation>
     </message>

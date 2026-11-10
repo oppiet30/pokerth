@@ -229,10 +229,30 @@ void QmlGuiInterface::SignalNetClientPingUpdate(unsigned minPing, unsigned avgPi
 	}
 }
 
+void QmlGuiInterface::SignalNetClientConnectionStalled(bool stalled)
+{
+	// The connection watchdog of the network thread: the server has been silent
+	// for a while (or is sending again) → the notice in pokerth.qml.
+	if (m_handler) {
+		QMetaObject::invokeMethod(m_handler, [this, stalled]() {
+			m_handler->onConnectionStalled(stalled);
+		}, Qt::QueuedConnection);
+	}
+}
+
 void QmlGuiInterface::SignalNetClientPrivateChatMsg(const std::string &playerName, const std::string &msg)
 {
 	if (m_lobbyHandler) {
 		QMetaObject::invokeMethod(m_lobbyHandler, "onPrivateChatMessage", Qt::QueuedConnection,
+								  Q_ARG(QString, QString::fromStdString(playerName)),
+								  Q_ARG(QString, QString::fromStdString(msg)));
+	}
+}
+
+void QmlGuiInterface::SignalNetClientPrivateChatLimitReached(const std::string &playerName, const std::string &msg)
+{
+	if (m_lobbyHandler) {
+		QMetaObject::invokeMethod(m_lobbyHandler, "onPrivateChatLimitReached", Qt::QueuedConnection,
 								  Q_ARG(QString, QString::fromStdString(playerName)),
 								  Q_ARG(QString, QString::fromStdString(msg)));
 	}
@@ -851,22 +871,8 @@ void QmlGuiInterface::postRiverRunAnimation1()
 	if (isNetwork) {
 		return;
 	}
-	QTimer::singleShot(5500, gh, [gh, sessionForTimer]() {
-		// The end of the tournament? As in the widgets client (gameTableImpl::postRiverRun-
-		// Animation6) NO further hand may follow the last one if only
-		// one player has chips left – otherwise the winner plays on alone endlessly
-		// and pays blinds in the process. checkLocalGameOver() reports the end of the
-		// game to the QML side (the winner popup).
-		if (gh->checkLocalGameOver())
-			return;
-		QMetaObject::invokeMethod(gh, "onNextRoundCleanGui", Qt::DirectConnection);
-		if (sessionForTimer) {
-			auto game = sessionForTimer->getCurrentGame();
-			if (game) {
-				game->initHand();
-				game->startHand();
-			}
-		}
+	QTimer::singleShot(5500, gh, [gh]() {
+		QMetaObject::invokeMethod(gh, "onLocalHandFinished", Qt::DirectConnection);
 	});
 }
 

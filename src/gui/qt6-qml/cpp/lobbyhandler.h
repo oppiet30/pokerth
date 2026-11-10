@@ -302,8 +302,14 @@ public:
 	// A reply from the dialog: the player id is fetched freshly from the
 	// player list when sending (it only applies to the current session of the partner).
 	Q_INVOKABLE void sendPrivateMessageToName(const QString &playerName, const QString &message);
+	// To an offline partner of an existing conversation, by name.
+	void sendOfflinePrivateMessage(const QString &playerName, const QString &message);
 	// The player id for a name (0 = currently not in the lobby).
 	Q_INVOKABLE unsigned playerIdByName(const QString &playerName) const;
+	// The notice for a partner at a running table or offline (the server holds
+	// the messages back until the game is over or the next login); empty if
+	// the messages go out right away.
+	Q_INVOKABLE QString privateMessageNotice(const QString &playerName) const;
 	bool isCurrentPlayerAdmin() const
 	{
 		return m_isCurrentPlayerAdmin;
@@ -384,6 +390,9 @@ public slots:
 	void postLocalChatNote(const QString &message);
 	void onLobbyChatMessage(const QString &playerName, const QString &message);
 	void onPrivateChatMessage(const QString &playerName, const QString &message);
+	// The server did not hold back a PM to a player at a running table: too
+	// many of your messages wait for that player already.
+	void onPrivateChatLimitReached(const QString &playerName, const QString &message);
 
 	// Game invitations (incoming). Called by QmlGuiInterface.
 	void onSelfGameInvitation(unsigned gameId, unsigned playerIdFrom);
@@ -623,6 +632,11 @@ private:
 		qint64 lastActivity = 0;    // ms since epoch, for the sorting
 	};
 	QHash<QString, PrivateThread> m_privateThreads;
+	// Partners whose limit of held back messages was reached, with the game
+	// they sit at - the notice ends with that game.
+	QHash<QString, unsigned> m_privateLimitGame;
+	// The same for offline partners - the notice ends with their next login.
+	QSet<QString> m_privateLimitOffline;
 	// The connection name of the PM database; empty = no database (then the
 	// history only lives until the program ends).
 	QString m_privateDbConn;
@@ -635,6 +649,8 @@ private:
 	QStringList m_chatLog;
 	// Is a bundled chatLogChanged notification already running? (notifyChatLogChanged)
 	bool m_chatLogNotifyPending = false;
+	// Has the "new release available" notice been shown in this program run?
+	bool m_updateNoticeShown = false;
 	ChatTranslator *m_chatTranslator = nullptr; // it appends the translate symbols and translates them
 	TextTranslator *m_textTranslator = nullptr; // it translates individual PM bubbles
 	// Running PM translations: request id -> (conversation partner, msgId).
@@ -671,6 +687,10 @@ private:
 	// player list model (GameIdRole). The only place where the idle criterion
 	// is maintained; to be called on every event that can change it.
 	void syncPlayerGameMembership();
+	// Removes player list entries of other ids carrying the same name (a stale
+	// entry left behind after a reconnect), except for players seated in a
+	// running game.
+	void removeStalePlayerListDuplicates(unsigned playerId, const QString &playerName);
 	QString resolvedPlayerName(unsigned playerId) const;
 	unsigned parsePrivateMessageTarget(QString &chatText) const;
 };

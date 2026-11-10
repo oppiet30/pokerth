@@ -1028,7 +1028,10 @@ AbstractClientStateReceiving::HandlePacket(boost::shared_ptr<ClientThread> clien
 	if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_PlayerInfoReplyMessage) {
 		const PlayerInfoReplyMessage &infoReply = tmpPacket->GetMsg()->playerinforeplymessage();
 		unsigned playerId = infoReply.playerid();
-		if (infoReply.has_playerinfodata()) {
+		if (playerId == CONNECTION_PROBE_PLAYER_ID) {
+			// Reply to the connection probe of the watchdog - its arrival
+			// alone was the point (ClientThread::HandlePacket).
+		} else if (infoReply.has_playerinfodata()) {
 			PlayerInfo tmpInfo;
 			const PlayerInfoReplyMessage::PlayerInfoData &netInfo = infoReply.playerinfodata();
 			tmpInfo.playerName = netInfo.playername();
@@ -1207,8 +1210,17 @@ AbstractClientStateReceiving::HandlePacket(boost::shared_ptr<ClientThread> clien
 		}
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_ChatRejectMessage) {
 		const ChatRejectMessage &netMessage = tmpPacket->GetMsg()->chatrejectmessage();
-		client->GetCallback().SignalNetClientGameChatMsg("(notice)", "Chat rejected: " + netMessage.chattext());
-		client->GetCallback().SignalNetClientLobbyChatMsg("(notice)", "Chat rejected: " + netMessage.chattext());
+		if (netMessage.rejectreason() == ChatRejectMessage::rejectReasonPendingLimit) {
+			PlayerInfo info;
+			if (netMessage.has_targetplayername())
+				info.playerName = netMessage.targetplayername();
+			else
+				client->GetCachedPlayerInfo(netMessage.targetplayerid(), info);
+			client->GetCallback().SignalNetClientPrivateChatLimitReached(info.playerName, netMessage.chattext());
+		} else {
+			client->GetCallback().SignalNetClientGameChatMsg("(notice)", "Chat rejected: " + netMessage.chattext());
+			client->GetCallback().SignalNetClientLobbyChatMsg("(notice)", "Chat rejected: " + netMessage.chattext());
+		}
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_DialogMessage) {
 		// Message box - display it in the GUI.
 		const DialogMessage &netDialog = tmpPacket->GetMsg()->dialogmessage();
@@ -1465,7 +1477,9 @@ ClientStateStartSession::InternalHandlePacket(boost::shared_ptr<ClientThread> cl
 				   // The discontinued widget client stays on 2.1.9 for good and
 				   // would otherwise be told about every newer release it never gets.
 				   && BUILD_ID_GET_REVISION(ownBuildId)
-				   && netAnnounce.latestbetarevision() != BUILD_ID_GET_REVISION(ownBuildId)) {
+				   // Only an older client is outdated; a freshly released one may
+				   // reach a server that has not been updated yet.
+				   && netAnnounce.latestbetarevision() > BUILD_ID_GET_REVISION(ownBuildId)) {
 			client->GetCallback().SignalNetClientNotification(NTF_NET_OUTDATED_BETA);
 		}
 
@@ -1763,9 +1777,11 @@ ClientStateWaitSession::InternalHandlePacket(boost::shared_ptr<ClientThread> cli
 		// mismatch, or deactivated as "in the lobby"), not on the client.
 		if (netInitAck.has_rejoingameid()) {
 			LOG_MSG("[REJOIN] InitAck offers rejoin, gameId=" << netInitAck.rejoingameid());
+			client->SetRejoinOfferedGameId(netInitAck.rejoingameid());
 			client->GetCallback().SignalNetClientRejoinPossible(netInitAck.rejoingameid());
 		} else {
 			LOG_MSG("[REJOIN] InitAck without rejoin offer (no running game held for us)");
+			client->SetRejoinOfferedGameId(0);
 		}
 		client->SetState(ClientStateWaitJoin::Instance());
 	} else if (tmpPacket->GetMsg()->messagetype() == PokerTHMessage::Type_AvatarRequestMessage) {
@@ -1861,6 +1877,15 @@ ClientStateWaitJoin::InternalHandlePacket(boost::shared_ptr<ClientThread> client
 			playerData->SetName(context.GetPlayerName());
 			playerData->SetAvatarFile(context.GetAvatarFile());
 			client->AddPlayerData(playerData);
+
+			// Our seat in this game will carry the current session guid, so store
+			// it right away. Waiting for the game start (InitGame) loses the
+			// rejoin if the connection breaks before the start message arrives.
+			// Not on a rejoin: until the server has completed it, the seat still
+			// carries the previous guid, which must survive another disconnect.
+			// InitGame stores the new one once the rejoin is done.
+			if (netJoinAck.gameid() != client->GetRejoinOfferedGameId())
+				client->WriteSessionGuidToFile();
 		}
 
 		client->GetCallback().SignalNetClientGameInfo(MSG_NET_GAME_CLIENT_JOIN);

@@ -71,7 +71,7 @@ jobs:
         uses: actions/checkout@v4
 
       # 100 + run number, never the bare run number: the local builds in
-      # docker/android/build_android.sh already shipped versionCode 20…30 as
+      # docker/android/build_android.sh already shipped versionCode 20…31 as
       # side-load APKs under the same package name, and Android refuses to
       # install a lower code over them ("App not installed" =
       # INSTALL_FAILED_VERSION_DOWNGRADE). The offset keeps every workflow build
@@ -253,6 +253,13 @@ jobs:
     if: inputs.play_track != 'none' && needs.build-aab.outputs.signed == 'true'
     runs-on: ubuntu-24.04
     steps:
+      # Only for the release notes. Before the download: checkout cleans the
+      # workspace and would delete the bundle again.
+      - name: Checkout release notes
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/play-whatsnew
+
       - name: Download App Bundle
         uses: actions/download-artifact@v4
         with:
@@ -266,3 +273,6 @@ jobs:
           releaseFiles: ${{ needs.build-aab.outputs.aab_name }}
           track: ${{ inputs.play_track }}
           status: completed
+          # Play's "What's new" per language: whatsnew-<BCP 47 locale>, at most
+          # 500 characters each. Update the files before every release.
+          whatsNewDirectory: .github/play-whatsnew
